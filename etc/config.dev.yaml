@@ -1,0 +1,39 @@
+Name: chronos-api
+Host: 0.0.0.0
+Port: 8888
+
+Redis:
+  Address: 10.0.0.2:26379
+  Password: xZrGg733gzPvq6Mcp0tu2tqApj6r5wNT
+  DB: 0
+  TTLSeconds: 300
+  JitterSeconds: 60
+  LockTTLSeconds: 10
+  RetryMs: 50
+  RetryMax: 20
+
+
+
+Mongo:
+  URI: mongodb://root:bpCrKhVqlymUFMhvGkRTQX7NGWX2H5kn@10.0.0.2:27017/?authSource=admin
+  Database: chart
+  Collections:
+    Spot: spot
+    Derivative: derivative
+    Market: market
+
+Injective:
+  BaseURL: https://sentry.exchange.grpc-web.injective.network
+  SpotSummaryAllPath: /api/chart/v1/spot/market_summary_all
+  SpotSummaryPath: /api/chart/v1/spot/market_summary
+  SpotConfigPath: /api/chart/v1/spot/config
+  DerivativeSummaryAllPath: /api/chart/v1/derivative/market_summary_all
+  DerivativeSummaryPath: /api/chart/v1/derivative/market_summary
+  DerivativeConfigPath: /api/chart/v1/derivative/config
+  MarketHistoryPath: /api/chart/v1/market/history
+  TimeoutMs: 10000
+
+Cron:
+  Enabled: true
+  IntervalSec: 60
+

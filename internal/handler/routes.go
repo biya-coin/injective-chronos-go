@@ -1,0 +1,78 @@
+package handler
+
+import (
+	"net/http"
+
+	"github.com/zeromicro/go-zero/rest"
+
+	"github.com/biya-coin/injective-chronos-go/internal/svc"
+)
+
+func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
+	// spot
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/spot/market_summary_all",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			SpotMarketSummaryAllHandler(ctx, w, r)
+		},
+	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/spot/config",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			SpotConfigHandler(ctx, w, r)
+		},
+	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/spot/market_summary",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			SpotMarketSummaryHandler(ctx, w, r)
+		},
+	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/spot/history",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			SpotMarketHistoryHandler(ctx, w, r)
+		},
+	})
+	// derivative
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/derivative/market_summary_all",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			DerivativeMarketSummaryAllHandler(ctx, w, r)
+		},
+	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/derivative/market_summary",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			DerivativeMarketSummaryHandler(ctx, w, r)
+		},
+	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/derivative/config",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			DerivativeConfigHandler(ctx, w, r)
+		},
+	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/derivative/history",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			DerivativeMarketHistoryHandler(ctx, w, r)
+		},
+	})
+	// market
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   "/api/chart/v1/market/history",
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			MarketHistoryHandler(ctx, w, r)
+		},
+	})
+}
