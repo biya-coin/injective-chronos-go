@@ -10,6 +10,7 @@ import (
 
 	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/logic"
+	"github.com/biya-coin/injective-chronos-go/internal/model"
 	"github.com/biya-coin/injective-chronos-go/internal/svc"
 )
 
@@ -141,11 +142,23 @@ func MarketHistoryHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *htt
 // Query: marketIDs=... (repeatable), resolution=5, countback=100
 func SpotMarketHistoryHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	marketIDs := q["marketIDs"]
+	marketId := q.Get("marketId")
 	resolution := q.Get("resolution")
 	if resolution == "" {
 		resolution = "1"
 	}
+	from := q.Get("from")
+	var fromInt int64 = 0
+	if from != "" && from != "0" {
+		fromInt, _ = strconv.ParseInt(from, 10, 64)
+	}
+	to := q.Get("to")
+	if to == "" || to == "0" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing to"})
+		return
+	}
+	var toInt int64 = 0
+	toInt, _ = strconv.ParseInt(to, 10, 64)
 	// countback optional
 	countback := 0
 	if v := q.Get("countback"); v != "" {
@@ -153,19 +166,22 @@ func SpotMarketHistoryHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r 
 			countback = n
 		}
 	}
-
-	if len(marketIDs) == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing marketIDs"})
+	if marketId == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing marketId"})
 		return
 	}
 	lgc := logic.NewChartLogic(r.Context(), ctx)
-	data, err := lgc.GetMarketHistory(r.Context(), marketIDs, resolution, countback)
+	data, err := lgc.GetMarketHistorySpot(r.Context(), marketId, resolution, countback, fromInt, toInt)
 	if err != nil {
 		logx.Errorf("SpotMarketHistory error: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, data)
+	// pack response
+	writeJSON(w, http.StatusOK, model.SpotMarketHistoryResponse{
+		SpotMarketHistory: data,
+		S:                 "ok",
+	})
 }
 
 // DerivativeMarketHistoryHandler returns candle history for multiple derivative marketIDs from Mongo.

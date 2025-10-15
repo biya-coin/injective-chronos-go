@@ -32,6 +32,7 @@ type InjectiveConf struct {
 	SpotSummaryAllPath       string
 	SpotSummaryPath          string
 	SpotConfigPath           string
+	SpotHistoryPath          string
 	DerivativeSummaryAllPath string
 	DerivativeSummaryPath    string
 	DerivativeConfigPath     string

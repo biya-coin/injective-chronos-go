@@ -95,15 +95,20 @@ func fetchAndStoreSpotConfig(ctxBg context.Context, svcCtx *svc.ServiceContext, 
 // fetchAndStoreSpotMarketHistory fetches spot-only market history and stores into Mongo `MarketColl`.
 func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	var countback = 10
+	var from int64
+	var to int64 = time.Now().Unix()
 	for _, res := range consts.SupportedMarketResolutions {
 		// 动态计算 countback
-		opts := options.FindOne().SetSort(bson.D{{Key: "updated_at", Value: -1}})
+		opts := options.FindOne().SetSort(bson.D{{Key: "t", Value: -1}})
 		var doc bson.M
-		if err := svcCtx.MarketColl.FindOne(context.Background(), bson.M{"kind": "history", "resolution": res}, opts).Decode(&doc); err != nil {
+		if err := svcCtx.SpotColl.FindOne(context.Background(), bson.M{"kind": "history", "resolution": res}, opts).Decode(&doc); err != nil {
 			countback = 0
+			from = 0
 		} else {
+			logx.Infof("spot market history -> res %s: %v", res, doc)
 			resolution, _ := strconv.ParseInt(res, 10, 64)
-			countback = int((time.Now().Unix()-doc["data"].(model.MarketHistoryRaw).T)/resolution) + 10
+			countback = int((to-doc["data"].(model.SpotMarketHistoryRaw).T)/(resolution*60)) + 5
+			from = doc["data"].(model.SpotMarketHistoryRaw).T
 		}
 
 		// 仅获取现货 marketIds（来源于 summary_all 快照）
@@ -113,53 +118,44 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 			continue
 		}
 
-		const batchSize = 50
-		for i := 0; i < len(marketIDs); i += batchSize {
-			end := i + batchSize
-			if end > len(marketIDs) {
-				end = len(marketIDs)
-			}
-			batch := marketIDs[i:end]
+		for _, mid := range marketIDs {
+
 			protect("spot.market.history.batch", func() {
-				rows, err := client.MarketHistory(ctxBg, batch, res, countback)
+				rows, err := client.SpotMarketHistory(ctxBg, from, to, mid, res, countback)
 				if err != nil {
-					logx.Errorf("fetch spot market history -> res %s batch %d-%d: %v", res, i, end, err)
+					logx.Errorf("fetch spot market history -> res:%s market:%s: %v", res, mid, err)
 					return
 				}
-				for _, row := range rows {
-					for tIndex := 0; tIndex < len(row.T); tIndex++ {
-						filter := bson.M{
+				for tIndex := 0; tIndex < len(rows.T); tIndex++ {
+					filter := bson.M{
+						"kind":       "history",
+						"market":     mid,
+						"resolution": res,
+						"t":          rows.T[tIndex],
+					}
+					count, err := svcCtx.SpotColl.CountDocuments(ctxBg, filter)
+					if err != nil {
+						logx.Errorf("count spot market history %s@%s: %v", mid, res, err)
+						continue
+					}
+					if count == 0 {
+						_, e := svcCtx.SpotColl.InsertOne(ctxBg, bson.M{
 							"kind":       "history",
-							"market":     row.MarketID,
+							"market":     mid,
 							"resolution": res,
-							"t":          row.T[tIndex],
-						}
-						count, err := svcCtx.MarketColl.CountDocuments(ctxBg, filter)
-						if err != nil {
-							logx.Errorf("count spot market history %s@%s: %v", row.MarketID, res, err)
-							continue
-						}
-						if count == 0 {
-							_, e := svcCtx.MarketColl.InsertOne(ctxBg, bson.M{
-								"kind":       "history",
-								"market":     row.MarketID,
-								"resolution": res,
-								"data": model.MarketHistoryRaw{
-									MarketID:   row.MarketID,
-									Resolution: res,
-									T:          row.T[tIndex],
-									O:          row.O[tIndex],
-									H:          row.H[tIndex],
-									L:          row.L[tIndex],
-									C:          row.C[tIndex],
-									V:          row.V[tIndex],
-								},
-								"t":          row.T[tIndex],
-								"updated_at": time.Now(),
-							})
-							if e != nil {
-								logx.Errorf("insert spot market history %s@%s: %v", row.MarketID, res, e)
-							}
+							"data": model.SpotMarketHistoryRaw{
+								T: rows.T[tIndex],
+								O: rows.O[tIndex],
+								H: rows.H[tIndex],
+								L: rows.L[tIndex],
+								C: rows.C[tIndex],
+								V: rows.V[tIndex],
+							},
+							"t":          rows.T[tIndex],
+							"updated_at": time.Now(),
+						})
+						if e != nil {
+							logx.Errorf("insert spot market history %s@%s: %v", mid, res, e)
 						}
 					}
 				}

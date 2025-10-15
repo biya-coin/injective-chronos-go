@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -12,6 +13,7 @@ import (
 	"github.com/biya-coin/injective-chronos-go/internal/cache"
 	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 // GetSpotConfig returns spot TradingView-style config from Injective with Redis caching.
@@ -140,4 +142,98 @@ func (l *ChartLogic) getMarketSummarySpot(ctx context.Context, market string, re
 	}
 	// not found; keep nil
 	return nil, nil
+}
+
+func (l *ChartLogic) getMarketHistorySpotByMarketIDs(ctx context.Context, marketId string, resolution string, countback int, from int64, to int64) (model.SpotMarketHistory, error) {
+	findOpts := options.Find()
+	findOpts.SetSort(bson.D{{Key: "t", Value: -1}})
+	if countback > 0 {
+		findOpts.SetLimit(int64(countback))
+	}
+	cur, err := l.svcCtx.SpotColl.Find(ctx, bson.M{
+		"kind":       "history",
+		"market":     marketId,
+		"resolution": resolution,
+		"t":          bson.M{"$gte": from, "$lte": to},
+	}, findOpts)
+	if err != nil {
+		logx.Errorf("getMarketHistorySpotByMarketIDs find error: %v", err)
+		return model.SpotMarketHistory{}, err
+	}
+	var points []bson.M
+	if err := cur.All(ctx, &points); err != nil {
+		logx.Errorf("getMarketHistorySpotByMarketIDs all error: %v", err)
+		return model.SpotMarketHistory{}, err
+	}
+	var out model.SpotMarketHistory = model.SpotMarketHistory{
+		T: make([]int64, 0),
+		O: make([]float64, 0),
+		H: make([]float64, 0),
+		L: make([]float64, 0),
+		C: make([]float64, 0),
+		V: make([]float64, 0),
+	}
+	logx.Infof("getMarketHistorySpotByMarketIDs----------------> points: %v", points)
+	for _, p := range points {
+		data := p["data"]
+		// 使用bson unmarshal
+		bsonData, _ := bson.Marshal(data)
+		var dataRaw model.SpotMarketHistoryRaw
+		bson.Unmarshal(bsonData, &dataRaw)
+		out.T = append(out.T, dataRaw.T)
+		out.O = append(out.O, dataRaw.O)
+		out.H = append(out.H, dataRaw.H)
+		out.L = append(out.L, dataRaw.L)
+		out.C = append(out.C, dataRaw.C)
+		out.V = append(out.V, dataRaw.V)
+	}
+	return out, nil
+}
+
+func (l *ChartLogic) GetMarketHistorySpot(ctx context.Context, marketId string, resolution string, countback int, from int64, to int64) (model.SpotMarketHistory, error) {
+	cacheKey := fmt.Sprintf("chart:spot:history:%s:%d:%d:%d:%s", resolution, countback, from, to, marketId)
+	if marketId == "" {
+		return model.SpotMarketHistory{}, fmt.Errorf("empty marketId")
+	}
+	if resolution == "" {
+		resolution = "1"
+	}
+	// 把resolution转换为int除以2作为redis的baseTTLSeconds
+	resolutionInt, _ := strconv.Atoi(resolution)
+	baseTTLSeconds := resolutionInt * 60 / 2
+
+	if countback <= 0 {
+		countback = 0
+	}
+	if bytes, err := cache.GetOrLoadBytes(
+		ctx,
+		l.svcCtx.Redis,
+		cacheKey,
+		baseTTLSeconds,
+		1,
+		l.svcCtx.Config.Redis.LockTTLSeconds,
+		l.svcCtx.Config.Redis.RetryMs,
+		l.svcCtx.Config.Redis.RetryMax,
+		func(ctx context.Context) ([]byte, error) {
+			result, err := l.getMarketHistorySpotByMarketIDs(ctx, marketId, resolution, countback, from, to)
+			if err != nil {
+				logx.Errorf("getMarketHistorySpotByMarketIDs error: %v", err)
+				return nil, err
+			}
+			return json.Marshal(result)
+		},
+	); err == nil && bytes != nil {
+		var v model.SpotMarketHistory
+		if e := json.Unmarshal(bytes, &v); e == nil {
+			return v, nil
+		}
+	}
+
+	// fallback (no cache)
+	result, err := l.getMarketHistorySpotByMarketIDs(ctx, marketId, resolution, countback, from, to)
+	if err != nil {
+		logx.Errorf("getMarketHistorySpotByMarketIDs error: %v", err)
+		return model.SpotMarketHistory{}, err
+	}
+	return result, nil
 }

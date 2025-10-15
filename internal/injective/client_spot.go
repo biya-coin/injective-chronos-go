@@ -9,6 +9,7 @@ import (
 	"net/url"
 
 	"github.com/biya-coin/injective-chronos-go/internal/model"
+	"github.com/zeromicro/go-zero/core/logx"
 )
 
 func (c *Client) SpotConfig(ctx context.Context) (*model.ChartSpotConfig, error) {
@@ -112,4 +113,60 @@ func (c *Client) SpotMarketSummaryAtResolution(ctx context.Context, market strin
 		return nil, err
 	}
 	return &out, nil
+}
+
+// SpotMarketHistory fetches spot candle history; same request format as MarketHistory.
+// It reuses the generic MarketHistory endpoint to avoid duplication.
+func (c *Client) SpotMarketHistory(ctx context.Context, from int64, to int64, marketId string, resolution string, countback int) (model.SpotMarketHistory, error) {
+	if marketId == "" {
+		return model.SpotMarketHistory{}, fmt.Errorf("SpotMarketHistory request marketIDs is required")
+	}
+	if resolution == "" {
+		return model.SpotMarketHistory{}, fmt.Errorf("SpotMarketHistory request resolution is required")
+	}
+
+	q := url.Values{}
+	if marketId != "" {
+		q.Set("marketId", marketId)
+	}
+	if resolution != "" {
+		q.Set("resolution", resolution)
+	}
+	if countback > 0 {
+		q.Set("countback", fmt.Sprintf("%d", countback))
+	}
+	// if countback is 0, set it to empty string means all data
+	if countback == 0 {
+		q.Set("countback", "")
+	}
+	if from != 0 {
+		q.Set("from", fmt.Sprintf("%d", from))
+	}
+	if to != 0 {
+		q.Set("to", fmt.Sprintf("%d", to))
+	}
+
+	endpoint := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.SpotHistoryPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
+	if err != nil {
+		logx.Errorf("SpotMarketHistory new request error: %v", err)
+		return model.SpotMarketHistory{}, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		logx.Errorf("SpotMarketHistory do request error: %v", err)
+		return model.SpotMarketHistory{}, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		logx.Errorf("SpotMarketHistory request response error: %v", fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b)))
+		return model.SpotMarketHistory{}, fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b))
+	}
+	var out model.SpotMarketHistory
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		logx.Errorf("SpotMarketHistory decode response error: %v", err)
+		return model.SpotMarketHistory{}, err
+	}
+	return out, nil
 }

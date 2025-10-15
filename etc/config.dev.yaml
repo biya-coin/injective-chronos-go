@@ -27,6 +27,7 @@ Injective:
   SpotSummaryAllPath: /api/chart/v1/spot/market_summary_all
   SpotSummaryPath: /api/chart/v1/spot/market_summary
   SpotConfigPath: /api/chart/v1/spot/config
+  SpotHistoryPath: /api/chart/v1/spot/history
   DerivativeSummaryAllPath: /api/chart/v1/derivative/market_summary_all
   DerivativeSummaryPath: /api/chart/v1/derivative/market_summary
   DerivativeConfigPath: /api/chart/v1/derivative/config

@@ -68,7 +68,7 @@ func (l *ChartLogic) GetMarketHistory(ctx context.Context, marketIDs []string, r
 		countback = 0
 	}
 
-	cacheKey := fmt.Sprintf("chart:spot:history:%s:%d:%v", resolution, countback, marketIDs)
+	cacheKey := fmt.Sprintf("chart:market:history:%s:%d:%v", resolution, countback, marketIDs)
 	if bytes, err := cache.GetOrLoadBytes(
 		ctx,
 		l.svcCtx.Redis,
