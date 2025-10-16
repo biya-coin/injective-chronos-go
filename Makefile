@@ -69,3 +69,14 @@ image-multi:
 ci: tidy fmt vet test build
 
 
+docker-run-dev:
+	@sudo mkdir -p /data/chronos-api-dev/log && sudo chown -R 65532:65532 /data/chronos-api-dev/log
+	@sudo mkdir -p /data/chronos-api-dev/etc && sudo chown -R 65532:65532 /data/chronos-api-dev/etc
+	docker run -p 4442:4442 --restart=always --name=chronos-api-dev \
+	--network=middleware-net \
+	-e ENV=dev \
+	-v /etc/localtime:/etc/localtime:ro \
+	-v /etc/timezone:/etc/timezone:ro \
+	-v /data/chronos-api-dev/log:/app/log \
+	-v /data/chronos-api-dev/etc:/app/etc \
+	chronos-api:$(TAG) 

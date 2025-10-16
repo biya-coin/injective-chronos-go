@@ -28,7 +28,7 @@ func main() {
 	// resolve config path based on -f flag or ENV
 	env := os.Getenv("ENV")
 	if env == "" {
-		env = "dev"
+		env = "local"
 	}
 	cfgPath := *configFile
 	if cfgPath == "" {

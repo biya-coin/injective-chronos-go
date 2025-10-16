@@ -35,7 +35,7 @@ COPY etc /app/etc
 # Writable log directory for non-root runtime
 RUN mkdir -p /app/log && chown -R 65532:65532 /app
 
-EXPOSE 8888
+EXPOSE 4442
 
 # 这行用于以非 root 用户（UID=65532, GID=65532）运行容器进程，提高安全性
 USER 65532:65532
