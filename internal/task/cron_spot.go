@@ -122,7 +122,9 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 		for _, mid := range marketIDs {
 
 			protect("spot.market.history.batch", func() {
-				rows, err := client.SpotMarketHistory(ctxBg, from, to, mid, res, countback)
+				ctx, cancel := context.WithTimeout(ctxBg, 30*time.Second)
+				defer cancel()
+				rows, err := client.SpotMarketHistory(ctx, from, to, mid, res, countback)
 				if err != nil {
 					logx.Errorf("fetch spot market history -> res:%s market:%s: %v", res, mid, err)
 					return
