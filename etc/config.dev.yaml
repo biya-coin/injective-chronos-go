@@ -1,6 +1,6 @@
 Name: chronos-api
 Host: 0.0.0.0
-Port: 8888
+Port: 4442
 
 Redis:
   Address: 10.0.0.2:26379
@@ -23,7 +23,7 @@ Mongo:
     Market: market
 
 Injective:
-  BaseURL: https://sentry.exchange.grpc-web.injective.network
+  BaseURL: https://k8s.global.mainnet.chart.grpc-web.injective.network
   SpotSummaryAllPath: /api/chart/v1/spot/market_summary_all
   SpotSummaryPath: /api/chart/v1/spot/market_summary
   SpotConfigPath: /api/chart/v1/spot/config

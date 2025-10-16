@@ -99,16 +99,17 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 	var to int64 = time.Now().Unix()
 	for _, res := range consts.SupportedMarketResolutions {
 		// 动态计算 countback
-		opts := options.FindOne().SetSort(bson.D{{Key: "t", Value: -1}})
-		var doc bson.M
+		opts := options.FindOne().SetSort(bson.D{{Key: "t", Value: -1}}).SetProjection(bson.M{"data": 1})
+		// 强类型解码，直接将 data 映射为 model.SpotMarketHistoryRaw，避免二次序列化
+		var doc model.SpotHistoryDoc
 		if err := svcCtx.SpotColl.FindOne(context.Background(), bson.M{"kind": "history", "resolution": res}, opts).Decode(&doc); err != nil {
 			countback = 0
 			from = 0
 		} else {
-			logx.Infof("spot market history -> res %s: %v", res, doc)
+			logx.Infof("fetchAndStoreSpotMarketHistory -> res %s lastT:%d", res, doc.Data.T)
 			resolution, _ := strconv.ParseInt(res, 10, 64)
-			countback = int((to-doc["data"].(model.SpotMarketHistoryRaw).T)/(resolution*60)) + 5
-			from = doc["data"].(model.SpotMarketHistoryRaw).T
+			countback = int((to-doc.Data.T)/(resolution*60)) + 5
+			from = doc.Data.T
 		}
 
 		// 仅获取现货 marketIds（来源于 summary_all 快照）

@@ -160,7 +160,7 @@ func (l *ChartLogic) getMarketHistorySpotByMarketIDs(ctx context.Context, market
 		logx.Errorf("getMarketHistorySpotByMarketIDs find error: %v", err)
 		return model.SpotMarketHistory{}, err
 	}
-	var points []bson.M
+	var points []model.SpotHistoryDoc
 	if err := cur.All(ctx, &points); err != nil {
 		logx.Errorf("getMarketHistorySpotByMarketIDs all error: %v", err)
 		return model.SpotMarketHistory{}, err
@@ -173,19 +173,16 @@ func (l *ChartLogic) getMarketHistorySpotByMarketIDs(ctx context.Context, market
 		C: make([]float64, 0),
 		V: make([]float64, 0),
 	}
-	logx.Infof("getMarketHistorySpotByMarketIDs----------------> points: %v", points)
+	logx.Debugf("getMarketHistorySpotByMarketIDs----------------> points: %+v", points)
 	for _, p := range points {
-		data := p["data"]
+		data := p.Data
 		// 使用bson unmarshal
-		bsonData, _ := bson.Marshal(data)
-		var dataRaw model.SpotMarketHistoryRaw
-		bson.Unmarshal(bsonData, &dataRaw)
-		out.T = append(out.T, dataRaw.T)
-		out.O = append(out.O, dataRaw.O)
-		out.H = append(out.H, dataRaw.H)
-		out.L = append(out.L, dataRaw.L)
-		out.C = append(out.C, dataRaw.C)
-		out.V = append(out.V, dataRaw.V)
+		out.T = append(out.T, data.T)
+		out.O = append(out.O, data.O)
+		out.H = append(out.H, data.H)
+		out.L = append(out.L, data.L)
+		out.C = append(out.C, data.C)
+		out.V = append(out.V, data.V)
 	}
 	return out, nil
 }
