@@ -117,3 +117,12 @@ func protect(where string, fn func()) {
 	defer recoverAndLog(where)
 	fn()
 }
+
+// cron logs helpers to add [CRON] prefix for split writer routing
+func cronInfof(format string, args ...any) {
+	logx.Infof("[CRON] "+format, args...)
+}
+
+func cronErrorf(format string, args ...any) {
+	logx.Errorf("[CRON] "+format, args...)
+}

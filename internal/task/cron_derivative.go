@@ -5,7 +5,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zeromicro/go-zero/core/logx"
 	"go.mongodb.org/mongo-driver/bson"
 
 	"github.com/biya-coin/injective-chronos-go/internal/consts"
@@ -17,7 +16,7 @@ func fetchAndStoreDerivativeSummaryAll(ctxBg context.Context, svcCtx *svc.Servic
 	for _, res := range consts.SupportedResolutions {
 		v, err := client.DerivativeMarketSummaryAll(ctxBg, res)
 		if err != nil {
-			logx.Errorf("fetch derivative summary_all -> resolution %s: error %v", res, err)
+			cronErrorf("fetch derivative summary_all -> resolution %s: error %v", res, err)
 			continue
 		}
 		_, e := svcCtx.DerivativeColl.InsertOne(ctxBg, bson.M{
@@ -27,7 +26,7 @@ func fetchAndStoreDerivativeSummaryAll(ctxBg context.Context, svcCtx *svc.Servic
 			"updated_at": time.Now(),
 		})
 		if e != nil {
-			logx.Errorf("insert derivative summary_all -> resolution %s: error %v", res, e)
+			cronErrorf("insert derivative summary_all -> resolution %s: error %v", res, e)
 		}
 	}
 }
@@ -36,7 +35,7 @@ func fetchAndStoreDerivativeSummaries(ctxBg context.Context, svcCtx *svc.Service
 	for _, res := range consts.SupportedResolutions {
 		marketIds := getMarketSummaryAllIds(svcCtx, res, consts.MarketTypeDerivative)
 		if marketIds == nil {
-			logx.Errorf("get market derivative summary all ids -> resolution %s: error %v", res, marketIds)
+			cronErrorf("get market derivative summary all ids -> resolution %s: error %v", res, marketIds)
 			continue
 		}
 		// bounded concurrency
@@ -54,7 +53,7 @@ func fetchAndStoreDerivativeSummaries(ctxBg context.Context, svcCtx *svc.Service
 				defer cancel()
 				one, err := client.DerivativeMarketSummaryAtResolution(ctx, mid, res)
 				if err != nil {
-					logx.Errorf("fetch derivative summary %s %s: %v", mid, res, err)
+					cronErrorf("fetch derivative summary %s %s: %v", mid, res, err)
 					return
 				}
 				_, e := svcCtx.DerivativeColl.InsertOne(ctxBg, bson.M{
@@ -65,7 +64,7 @@ func fetchAndStoreDerivativeSummaries(ctxBg context.Context, svcCtx *svc.Service
 					"updated_at": time.Now(),
 				})
 				if e != nil {
-					logx.Errorf("insert derivative summary %s %s: %v", mid, res, e)
+					cronErrorf("insert derivative summary %s %s: %v", mid, res, e)
 				}
 			}(mid)
 		}

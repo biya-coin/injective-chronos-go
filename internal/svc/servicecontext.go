@@ -6,13 +6,13 @@ import (
 	"time"
 
 	"github.com/go-redis/redis/v8"
+	"github.com/zeromicro/go-zero/core/logx"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
-	"github.com/zeromicro/go-zero/core/logx"
-
 	"github.com/biya-coin/injective-chronos-go/internal/config"
+	"github.com/biya-coin/injective-chronos-go/internal/logutil"
 )
 
 type ServiceContext struct {
@@ -107,6 +107,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 
 	// HTTP client
 	hc := &http.Client{Timeout: time.Duration(c.Injective.TimeoutMs) * time.Millisecond}
+
+	// Setup split log writer: api.log for API logs, cron.log for cron logs
+	if sw, err := logutil.NewSplitWriter("logs/api.log", "logs/cron.log"); err != nil {
+		logx.Errorf("init split log writer failed: %v", err)
+	} else {
+		logx.SetWriter(logx.NewWriter(sw))
+	}
 
 	return &ServiceContext{
 		Config:         c,

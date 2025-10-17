@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/zeromicro/go-zero/core/logx"
-
 	"github.com/biya-coin/injective-chronos-go/internal/injective"
 	"github.com/biya-coin/injective-chronos-go/internal/svc"
 )
@@ -22,7 +20,7 @@ func StartCron(ctx *svc.ServiceContext) {
 		for {
 			<-ticker.C
 
-			logx.Infof("fetching task starting------->spot")
+			cronInfof("fetching task starting------->spot")
 
 			// Spot
 			go fetchAndStoreSpotConfig(context.Background(), ctx, client)
@@ -44,7 +42,7 @@ func StartCron(ctx *svc.ServiceContext) {
 
 				// Derivative
 				// derivativeResolutions := fetchAndStoreDerivativeConfig(context.Background(), ctx, client)
-				logx.Infof("fetching task starting------->derivative")
+				cronInfof("fetching task starting------->derivative")
 				fetchAndStoreDerivativeSummaryAll(context.Background(), ctx, client)
 				fetchAndStoreDerivativeSummaries(context.Background(), ctx, client)
 
@@ -58,7 +56,7 @@ func StartCron(ctx *svc.ServiceContext) {
 			<-ticker.C
 			protect("cron.tick.market", func() {
 
-				logx.Infof("fetching task starting------->market")
+				cronInfof("fetching task starting------->market")
 
 				// Market
 				fetchAndStoreMarketHistory(context.Background(), ctx, client)

@@ -5,7 +5,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/zeromicro/go-zero/core/logx"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -20,7 +19,7 @@ func getMarketHistoryAllIds(svcCtx *svc.ServiceContext, resolution string) []str
 	spotIds := getMarketSummaryAllIds(svcCtx, resolution, consts.MarketTypeSpot)
 	derivativeIds := getMarketSummaryAllIds(svcCtx, resolution, consts.MarketTypeDerivative)
 	if len(spotIds) == 0 && len(derivativeIds) == 0 {
-		logx.Errorf("market history -> resolution %s: no market ids from summary_all", resolution)
+		cronErrorf("market history -> resolution %s: no market ids from summary_all", resolution)
 		return nil
 	}
 	// deduplicate
@@ -40,7 +39,7 @@ func getMarketHistoryAllIds(svcCtx *svc.ServiceContext, resolution string) []str
 		marketIDs = append(marketIDs, mid)
 	}
 	if len(marketIDs) == 0 {
-		logx.Errorf("market history -> resolution %s: merged market ids empty", resolution)
+		cronErrorf("market history -> resolution %s: merged market ids empty", resolution)
 		return nil
 	}
 	return marketIDs
@@ -73,7 +72,7 @@ func fetchAndStoreMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContex
 			protect("market.history.batch", func() {
 				rows, err := client.MarketHistory(ctxBg, []string{marketId}, res, countback)
 				if err != nil {
-					logx.Errorf("fetch market history -> res %s marketId %s: %v", res, marketId, err)
+					cronErrorf("fetch market history -> res %s marketId %s: %v", res, marketId, err)
 					return
 				}
 				for _, row := range rows {
@@ -87,7 +86,7 @@ func fetchAndStoreMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContex
 						}
 						count, err := svcCtx.MarketColl.CountDocuments(ctxBg, filter)
 						if err != nil {
-							logx.Errorf("count market history %s@%s: %v", row.MarketID, res, err)
+							cronErrorf("count market history %s@%s: %v", row.MarketID, res, err)
 							continue
 						}
 						if count == 0 {
@@ -109,7 +108,7 @@ func fetchAndStoreMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContex
 								"updated_at": time.Now(),
 							})
 							if e != nil {
-								logx.Errorf("insert market history %s@%s: %v", row.MarketID, res, e)
+								cronErrorf("insert market history %s@%s: %v", row.MarketID, res, e)
 							}
 						}
 					}

@@ -6,7 +6,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/zeromicro/go-zero/core/logx"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo/options"
 
@@ -19,11 +18,11 @@ import (
 func fetchAndStoreSpotSummaryAll(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	defer func() {
 		if r := recover(); r != nil {
-			logx.Errorf("goroutine recovered from fetchAndStoreSpotSummaryAll: %v", r)
+			cronErrorf("goroutine recovered from fetchAndStoreSpotSummaryAll: %v", r)
 		}
 	}()
 	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_summary_all_fetch", 3*time.Second); !ok {
-		logx.Infof("fetchAndStoreSpotSummaryAll: acquire lock timeout, skip this run")
+		cronInfof("fetchAndStoreSpotSummaryAll: acquire lock timeout, skip this run")
 		return
 	} else {
 		defer release()
@@ -31,7 +30,7 @@ func fetchAndStoreSpotSummaryAll(ctxBg context.Context, svcCtx *svc.ServiceConte
 	for _, res := range consts.SupportedResolutions {
 		v, err := client.SpotMarketSummaryAll(ctxBg, res)
 		if err != nil {
-			logx.Errorf("fetch spot summary_all -> resolution %s: error %v", res, err)
+			cronErrorf("fetch spot summary_all -> resolution %s: error %v", res, err)
 			continue
 		}
 		_, e := svcCtx.SpotColl.InsertOne(ctxBg, bson.M{
@@ -41,7 +40,7 @@ func fetchAndStoreSpotSummaryAll(ctxBg context.Context, svcCtx *svc.ServiceConte
 			"updated_at": time.Now(),
 		})
 		if e != nil {
-			logx.Errorf("insert spot summary_all -> resolution %s: error %v", res, e)
+			cronErrorf("insert spot summary_all -> resolution %s: error %v", res, e)
 		}
 	}
 }
@@ -50,11 +49,11 @@ func fetchAndStoreSpotSummaryAll(ctxBg context.Context, svcCtx *svc.ServiceConte
 func fetchAndStoreSpotSummaries(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	defer func() {
 		if r := recover(); r != nil {
-			logx.Errorf("goroutine recovered from fetchAndStoreSpotSummaries: %v", r)
+			cronErrorf("goroutine recovered from fetchAndStoreSpotSummaries: %v", r)
 		}
 	}()
 	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_summaries_fetch", 3*time.Second); !ok {
-		logx.Infof("fetchAndStoreSpotSummaries: acquire lock timeout, skip this run")
+		cronInfof("fetchAndStoreSpotSummaries: acquire lock timeout, skip this run")
 		return
 	} else {
 		defer release()
@@ -62,7 +61,7 @@ func fetchAndStoreSpotSummaries(ctxBg context.Context, svcCtx *svc.ServiceContex
 	for _, res := range consts.SupportedResolutions {
 		marketIds := getMarketSummaryAllIds(svcCtx, res, consts.MarketTypeSpot)
 		if marketIds == nil {
-			logx.Errorf("get market spot summary all ids -> resolution %s: error %v", res, marketIds)
+			cronErrorf("get market spot summary all ids -> resolution %s: error %v", res, marketIds)
 			continue
 		}
 		// bounded concurrency
@@ -78,7 +77,7 @@ func fetchAndStoreSpotSummaries(ctxBg context.Context, svcCtx *svc.ServiceContex
 				defer recoverAndLog("spot.worker:" + res + ":" + mid)
 				one, err := client.SpotMarketSummaryAtResolution(ctxBg, mid, res)
 				if err != nil {
-					logx.Errorf("fetch spot summary %s@%s: %v", mid, res, err)
+					cronErrorf("fetch spot summary %s@%s: %v", mid, res, err)
 					return
 				}
 				_, e := svcCtx.SpotColl.InsertOne(ctxBg, bson.M{
@@ -89,7 +88,7 @@ func fetchAndStoreSpotSummaries(ctxBg context.Context, svcCtx *svc.ServiceContex
 					"updated_at": time.Now(),
 				})
 				if e != nil {
-					logx.Errorf("insert spot summary %s@%s: %v", mid, res, e)
+					cronErrorf("insert spot summary %s@%s: %v", mid, res, e)
 				}
 			}(mid)
 		}
@@ -101,18 +100,18 @@ func fetchAndStoreSpotSummaries(ctxBg context.Context, svcCtx *svc.ServiceContex
 func fetchAndStoreSpotConfig(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	defer func() {
 		if r := recover(); r != nil {
-			logx.Errorf("goroutine recovered from fetchAndStoreSpotConfig: %v", r)
+			cronErrorf("goroutine recovered from fetchAndStoreSpotConfig: %v", r)
 		}
 	}()
 	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_config_fetch", 3*time.Second); !ok {
-		logx.Infof("fetchAndStoreSpotConfig: acquire lock timeout, skip this run")
+		cronInfof("fetchAndStoreSpotConfig: acquire lock timeout, skip this run")
 		return
 	} else {
 		defer release()
 	}
 	cfg, err := client.SpotConfig(ctxBg)
 	if err != nil {
-		logx.Errorf("fetch spot config: %v", err)
+		cronErrorf("fetch spot config: %v", err)
 		return
 	}
 	_, e := svcCtx.SpotColl.InsertOne(ctxBg, bson.M{
@@ -121,7 +120,7 @@ func fetchAndStoreSpotConfig(ctxBg context.Context, svcCtx *svc.ServiceContext, 
 		"updated_at": time.Now(),
 	})
 	if e != nil {
-		logx.Errorf("insert spot config: %v", e)
+		cronErrorf("insert spot config: %v", e)
 	}
 }
 
@@ -129,11 +128,11 @@ func fetchAndStoreSpotConfig(ctxBg context.Context, svcCtx *svc.ServiceContext, 
 func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	defer func() {
 		if r := recover(); r != nil {
-			logx.Errorf("goroutine recovered from fetchAndStoreSpotMarketHistory: %v", r)
+			cronErrorf("goroutine recovered from fetchAndStoreSpotMarketHistory: %v", r)
 		}
 	}()
 	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_market_history_fetch", 3*time.Second); !ok {
-		logx.Infof("fetchAndStoreSpotMarketHistory: acquire lock timeout, skip this run")
+		cronInfof("fetchAndStoreSpotMarketHistory: acquire lock timeout, skip this run")
 		return
 	} else {
 		defer release()
@@ -150,7 +149,7 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 			countback = 0
 			from = 0
 		} else {
-			logx.Infof("fetchAndStoreSpotMarketHistory -> res %s lastT:%d", res, doc.Data.T)
+			cronInfof("fetchAndStoreSpotMarketHistory -> res %s lastT:%d", res, doc.Data.T)
 			resolution, _ := strconv.ParseInt(res, 10, 64)
 			countback = int((to-doc.Data.T)/(resolution*60)) + 5
 			from = doc.Data.T
@@ -159,7 +158,7 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 		// 仅获取现货 marketIds（来源于 summary_all 快照）
 		marketIDs := getMarketSummaryAllIds(svcCtx, "24h", consts.MarketTypeSpot)
 		if len(marketIDs) == 0 {
-			logx.Errorf("spot market history -> res %s: no market ids", res)
+			cronErrorf("spot market history -> res %s: no market ids", res)
 			continue
 		}
 
@@ -170,7 +169,7 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 				defer cancel()
 				rows, err := client.SpotMarketHistory(ctx, from, to, mid, res, countback)
 				if err != nil {
-					logx.Errorf("fetch spot market history -> res:%s market:%s: %v", res, mid, err)
+					cronErrorf("fetch spot market history -> res:%s market:%s: %v", res, mid, err)
 					return
 				}
 				for tIndex := 0; tIndex < len(rows.T); tIndex++ {
@@ -182,7 +181,7 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 					}
 					count, err := svcCtx.SpotColl.CountDocuments(ctxBg, filter)
 					if err != nil {
-						logx.Errorf("count spot market history %s@%s: %v", mid, res, err)
+						cronErrorf("count spot market history %s@%s: %v", mid, res, err)
 						continue
 					}
 					if count == 0 {
@@ -202,7 +201,7 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 							"updated_at": time.Now(),
 						})
 						if e != nil {
-							logx.Errorf("insert spot market history %s@%s: %v", mid, res, e)
+							cronErrorf("insert spot market history %s@%s: %v", mid, res, e)
 						}
 					}
 				}
@@ -214,23 +213,23 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 func fetchAndStoreSpotSymbolInfo(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	defer func() {
 		if r := recover(); r != nil {
-			logx.Errorf("goroutine recovered from fetchAndStoreSpotSymbolInfo: %v", r)
+			cronErrorf("goroutine recovered from fetchAndStoreSpotSymbolInfo: %v", r)
 		}
 	}()
 	// 分布式任务锁，避免并发重复执行（最多等待 3s 获取）
 	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_symbol_info_fetch", 3*time.Second); !ok {
-		logx.Infof("fetchAndStoreSpotSymbolInfo: acquire lock timeout, skip this run")
+		cronInfof("fetchAndStoreSpotSymbolInfo: acquire lock timeout, skip this run")
 		return
 	} else {
 		defer release()
 	}
 
 	// TOOD:to confirm the group come form
-	logx.Infof("fetchAndStoreSpotSymbolInfo starting------->")
+	cronInfof("fetchAndStoreSpotSymbolInfo starting------->")
 	var group string = ""
 	symbolInfo, err := client.SpotSymbolInfo(ctxBg, group)
 	if err != nil {
-		logx.Errorf("fetch spot symbol info -> group:%s: %v", group, err)
+		cronErrorf("fetch spot symbol info -> group:%s: %v", group, err)
 		return
 	}
 	IntradayMultipliers := symbolInfo.IntradayMultipliers
@@ -242,7 +241,7 @@ func fetchAndStoreSpotSymbolInfo(ctxBg context.Context, svcCtx *svc.ServiceConte
 		}
 		count, err := svcCtx.SpotColl.CountDocuments(ctxBg, filter)
 		if err != nil {
-			logx.Errorf("count spot symbol info -> symbol:%s: %v", symbolInfo.Symbol[index], err)
+			cronErrorf("count spot symbol info -> symbol:%s: %v", symbolInfo.Symbol[index], err)
 			continue
 		}
 
@@ -272,7 +271,7 @@ func fetchAndStoreSpotSymbolInfo(ctxBg context.Context, svcCtx *svc.ServiceConte
 				UpdatedAt: time.Now(),
 			})
 			if err != nil {
-				logx.Errorf("insert spot symbol info -> symbol:%s: %v", symbolInfo.Symbol[index], err)
+				cronErrorf("insert spot symbol info -> symbol:%s: %v", symbolInfo.Symbol[index], err)
 			}
 		}
 	}
@@ -281,13 +280,13 @@ func fetchAndStoreSpotSymbolInfo(ctxBg context.Context, svcCtx *svc.ServiceConte
 func getSpotSymbolsList(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) ([]string, error) {
 	cur, err := svcCtx.SpotColl.Find(ctxBg, bson.M{"kind": "symbol_info"})
 	if err != nil {
-		logx.Errorf("get spot symbols list error: %v", err)
+		cronErrorf("get spot symbols list error: %v", err)
 		return nil, err
 	}
 	var symbols []model.SpotSymbolInfoRawDoc
 	var symbolList []string
 	if err := cur.All(ctxBg, &symbols); err != nil {
-		logx.Errorf("get spot symbols list error: %v", err)
+		cronErrorf("get spot symbols list error: %v", err)
 		return nil, err
 	}
 	for _, symbol := range symbols {
@@ -299,24 +298,24 @@ func getSpotSymbolsList(ctxBg context.Context, svcCtx *svc.ServiceContext, clien
 func fetchAndStoreSpotSymbols(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	defer func() {
 		if r := recover(); r != nil {
-			logx.Errorf("goroutine recovered from fetchAndStoreSpotSymbols: %v", r)
+			cronErrorf("goroutine recovered from fetchAndStoreSpotSymbols: %v", r)
 		}
 	}()
 	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_symbols_fetch", 3*time.Second); !ok {
-		logx.Infof("fetchAndStoreSpotSymbols: acquire lock timeout, skip this run")
+		cronInfof("fetchAndStoreSpotSymbols: acquire lock timeout, skip this run")
 		return
 	} else {
 		defer release()
 	}
 	symbolsList, err := getSpotSymbolsList(ctxBg, svcCtx, client)
 	if err != nil {
-		logx.Errorf("get spot symbols list error: %v", err)
+		cronErrorf("get spot symbols list error: %v", err)
 		return
 	}
 	for _, symbol := range symbolsList {
 		symbols, err := client.SpotSymbols(ctxBg, symbol)
 		if err != nil {
-			logx.Errorf("fetch spot symbols error: %v symbol:%s", err, symbol)
+			cronErrorf("fetch spot symbols error: %v symbol:%s", err, symbol)
 			continue
 		}
 
@@ -326,7 +325,7 @@ func fetchAndStoreSpotSymbols(ctxBg context.Context, svcCtx *svc.ServiceContext,
 		}
 		count, err := svcCtx.SpotColl.CountDocuments(ctxBg, filter)
 		if err != nil {
-			logx.Errorf("count spot symbols -> symbol:%s: %v", symbol, err)
+			cronErrorf("count spot symbols -> symbol:%s: %v", symbol, err)
 			return
 		}
 		if count == 0 {
@@ -337,7 +336,7 @@ func fetchAndStoreSpotSymbols(ctxBg context.Context, svcCtx *svc.ServiceContext,
 				UpdatedAt: time.Now(),
 			})
 			if err != nil {
-				logx.Errorf("insert spot symbols -> symbol:%s: %v", symbol, err)
+				cronErrorf("insert spot symbols -> symbol:%s: %v", symbol, err)
 			}
 		}
 	}
