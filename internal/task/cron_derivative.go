@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/injective"
@@ -13,6 +14,33 @@ import (
 	"github.com/biya-coin/injective-chronos-go/internal/svc"
 )
 
+func fetchAndStoreDerivativeConfig(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			cronErrorf("goroutine recovered from fetchAndStoreDerivativeConfig: %v", r)
+		}
+	}()
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "derivative_config_fetch", 3*time.Second); !ok {
+		cronInfof("fetchAndStoreDerivativeConfig: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
+
+	cfg, err := client.DerivativeConfig(ctxBg)
+	if err != nil {
+		cronErrorf("fetch derivative config: %v", err)
+		return
+	}
+	_, e := svcCtx.DerivativeColl.InsertOne(ctxBg, model.ChartDerivativeConfigRawDoc{
+		Kind:      "config",
+		UpdatedAt: time.Now(),
+		Data:      *cfg,
+	})
+	if e != nil {
+		cronErrorf("insert derivative config: %v", e)
+	}
+}
 func fetchAndStoreDerivativeSummaryAll(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -221,6 +249,96 @@ func fetchAndStoreDerivativeSymbols(ctxBg context.Context, svcCtx *svc.ServiceCo
 
 			if err != nil {
 				cronErrorf("insert derivative symbols -> symbol:%s: %v", symbol, err)
+			}
+		}
+	}
+}
+
+func getAllDerivativeSymbols(svcCtx *svc.ServiceContext) ([]string, error) {
+	filter := bson.M{"kind": "symbols"}
+	cur, err := svcCtx.DerivativeColl.Find(context.Background(), filter)
+	if err != nil {
+		cronErrorf("get all derivative symbols error: %v", err)
+		return nil, err
+	}
+	var symbols []model.DerivativeSymbolsRawDoc
+	if err := cur.All(context.Background(), &symbols); err != nil {
+		cronErrorf("get all derivative symbols error: %v", err)
+		return nil, err
+	}
+	var symbolList []string
+	for _, symbol := range symbols {
+		symbolList = append(symbolList, symbol.Symbol)
+	}
+	return symbolList, nil
+}
+
+func fetchAndStoreDerivativeHistory(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			cronErrorf("goroutine recovered from fetchAndStoreDerivativeHistory: %v", r)
+		}
+	}()
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "derivative_history_fetch", 3*time.Second); !ok {
+		cronInfof("fetchAndStoreDerivativeHistory: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
+	derivativeSymbols, err := getAllDerivativeSymbols(svcCtx)
+	if err != nil {
+		cronErrorf("fetchAndStoreDerivativeHistory get all derivative symbols error: %v", err)
+		return
+	}
+	if len(derivativeSymbols) == 0 {
+		cronErrorf("fetchAndStoreDerivativeHistory get derivative market ids is empty")
+		return
+	}
+	for _, resolution := range append(consts.SupportedMarketResolutions, consts.SupportedDerivativeResolutions...) {
+		for _, symbol := range derivativeSymbols {
+			var from int64 = 0
+			opts := options.FindOne().SetSort(bson.D{{Key: "t", Value: -1}})
+			var doc model.DerivativeHistoryRawDoc
+			if err := svcCtx.DerivativeColl.FindOne(context.Background(), bson.M{"kind": "history", "symbol": symbol, "resolution": resolution}, opts).Decode(&doc); err == nil {
+				from = doc.T
+			}
+			derivativeHistory, err := client.DerivativeHistory(ctxBg, symbol, resolution, from)
+			if err != nil {
+				cronErrorf("fetch derivative history error: %v symbol:%s", err, symbol)
+				continue
+			}
+			for index := 0; index < len(derivativeHistory.T); index++ {
+				filter := bson.M{
+					"kind":       "history",
+					"symbol":     symbol,
+					"resolution": resolution,
+					"t":          derivativeHistory.T[index],
+				}
+				count, err := svcCtx.DerivativeColl.CountDocuments(ctxBg, filter)
+				if err != nil {
+					cronErrorf("count derivative history -> symbol:%s resolution:%s t:%d: %v", symbol, resolution, derivativeHistory.T[index], err)
+					continue
+				}
+				if count == 0 {
+					_, err = svcCtx.DerivativeColl.InsertOne(ctxBg, model.DerivativeHistoryRawDoc{
+						Kind:       "history",
+						Symbol:     symbol,
+						Resolution: resolution,
+						Data: model.DerivativeHistoryRaw{
+							C: derivativeHistory.C[index],
+							H: derivativeHistory.H[index],
+							L: derivativeHistory.L[index],
+							O: derivativeHistory.O[index],
+							T: derivativeHistory.T[index],
+							V: derivativeHistory.V[index],
+						},
+						T:         derivativeHistory.T[index],
+						UpdatedAt: time.Now(),
+					})
+					if err != nil {
+						cronErrorf("insert derivative history -> symbol:%s resolution:%s t:%d: %v", symbol, resolution, derivativeHistory.T[index], err)
+					}
+				}
 			}
 		}
 	}

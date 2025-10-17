@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
@@ -133,6 +134,36 @@ func (c *Client) DerivativeSymbols(ctx context.Context, symbol string) (*model.D
 		return nil, fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b))
 	}
 	var out model.DerivativeSymbolsRaw
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DerivativeHistory(ctx context.Context, symbol string, resolution string, from int64) (*model.DerivativeHistory, error) {
+	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.DerivativeHistoryPath)
+	q := url.Values{}
+	q.Set("symbol", symbol)
+	q.Set("resolution", resolution)
+	if from != 0 {
+		q.Set("from", fmt.Sprintf("%d", from))
+	}
+	to := time.Now().Unix()
+	q.Set("to", fmt.Sprintf("%d", to))
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u+"?"+q.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b))
+	}
+	var out model.DerivativeHistory
 	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
 		return nil, err
 	}

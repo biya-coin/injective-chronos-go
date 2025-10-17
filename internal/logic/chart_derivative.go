@@ -11,7 +11,6 @@ import (
 
 	"github.com/biya-coin/injective-chronos-go/internal/cache"
 	"github.com/biya-coin/injective-chronos-go/internal/consts"
-	"github.com/biya-coin/injective-chronos-go/internal/injective"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
 )
 
@@ -102,6 +101,15 @@ func (l *ChartLogic) getMarketSummaryDerivative(ctx context.Context, market stri
 	return nil, nil
 }
 
+func (l *ChartLogic) getDerivativeConfigFromDB(ctx context.Context) (*model.ChartDerivativeConfig, error) {
+	opts := options.FindOne().SetSort(bson.D{{Key: "updated_at", Value: -1}})
+	var doc model.ChartDerivativeConfigRawDoc
+	if err := l.svcCtx.DerivativeColl.FindOne(ctx, bson.M{"kind": "config"}, opts).Decode(&doc); err != nil {
+		return nil, err
+	}
+	return &doc.Data, nil
+}
+
 // GetDerivativeConfig returns derivative TradingView-style config from Injective with Redis caching.
 func (l *ChartLogic) GetDerivativeConfig(ctx context.Context) (*model.ChartDerivativeConfig, error) {
 	cacheKey := "chart:derivative:config"
@@ -115,12 +123,11 @@ func (l *ChartLogic) GetDerivativeConfig(ctx context.Context) (*model.ChartDeriv
 		l.svcCtx.Config.Redis.RetryMs,
 		l.svcCtx.Config.Redis.RetryMax,
 		func(ctx context.Context) ([]byte, error) {
-			client := injective.NewClient(l.svcCtx.Config.Injective, l.svcCtx.HttpClient)
-			cfg, err := client.DerivativeConfig(ctx)
+			doc, err := l.getDerivativeConfigFromDB(ctx)
 			if err != nil {
 				return nil, err
 			}
-			return json.Marshal(cfg)
+			return json.Marshal(doc)
 		},
 	); err == nil && bytes != nil {
 		var v model.ChartDerivativeConfig
@@ -129,14 +136,11 @@ func (l *ChartLogic) GetDerivativeConfig(ctx context.Context) (*model.ChartDeriv
 		}
 	}
 	// fallback
-	client := injective.NewClient(l.svcCtx.Config.Injective, l.svcCtx.HttpClient)
-	cfg, err := client.DerivativeConfig(ctx)
+	doc, err := l.getDerivativeConfigFromDB(ctx)
 	if err != nil {
 		return nil, err
 	}
-	bytes, _ := json.Marshal(cfg)
-	_ = l.svcCtx.Redis.Set(ctx, cacheKey, bytes, 5*time.Minute).Err()
-	return cfg, nil
+	return doc, nil
 }
 
 func (l *ChartLogic) getDerivativeSymbolInfoFromDB(ctx context.Context, group string) (*model.DerivativeSymbolInfo, error) {
@@ -255,6 +259,69 @@ func (l *ChartLogic) GetDerivativeSymbols(ctx context.Context, symbol string) (*
 		}
 	}
 	doc, err := l.getDerivativeSymbolsFromDB(ctx, symbol)
+	if err != nil {
+		return nil, err
+	}
+	return doc, nil
+}
+
+func (l *ChartLogic) getDerivativeHistoryFromDB(ctx context.Context, symbol string, resolution string, from int64, to int64, countback int) (*model.DerivativeHistory, error) {
+	opts := options.Find().SetSort(bson.D{{Key: "t", Value: -1}})
+	if countback > 0 {
+		opts.SetLimit(int64(countback))
+	}
+	var doc []model.DerivativeHistoryRawDoc
+	cur, err := l.svcCtx.DerivativeColl.Find(ctx, bson.M{"kind": "history", "symbol": symbol, "resolution": resolution, "t": bson.M{"$gte": from, "$lte": to}}, opts)
+	if err != nil {
+		return nil, err
+	}
+	if err := cur.All(ctx, &doc); err != nil {
+		return nil, err
+	}
+	var out model.DerivativeHistory = model.DerivativeHistory{
+		C: make([]float64, 0),
+		H: make([]float64, 0),
+		L: make([]float64, 0),
+		O: make([]float64, 0),
+		T: make([]int64, 0),
+		V: make([]float64, 0),
+	}
+	for _, d := range doc {
+		out.C = append(out.C, d.Data.C)
+		out.H = append(out.H, d.Data.H)
+		out.L = append(out.L, d.Data.L)
+		out.O = append(out.O, d.Data.O)
+		out.T = append(out.T, d.Data.T)
+		out.V = append(out.V, d.Data.V)
+	}
+	return &out, nil
+}
+
+func (l *ChartLogic) GetDerivativeHistory(ctx context.Context, symbol string, resolution string, from int64, to int64, countback int) (*model.DerivativeHistory, error) {
+	cacheKey := fmt.Sprintf("chart:derivative:history:%s:%s:%d:%d:%d", symbol, resolution, from, to, countback)
+	if bytes, err := cache.GetOrLoadBytes(
+		ctx,
+		l.svcCtx.Redis,
+		cacheKey,
+		l.svcCtx.Config.Redis.TTLSeconds,
+		l.svcCtx.Config.Redis.JitterSeconds,
+		l.svcCtx.Config.Redis.LockTTLSeconds,
+		l.svcCtx.Config.Redis.RetryMs,
+		l.svcCtx.Config.Redis.RetryMax,
+		func(ctx context.Context) ([]byte, error) {
+			doc, err := l.getDerivativeHistoryFromDB(ctx, symbol, resolution, from, to, countback)
+			if err != nil {
+				return nil, err
+			}
+			return json.Marshal(doc)
+		},
+	); err == nil && bytes != nil {
+		var v model.DerivativeHistory
+		if e := json.Unmarshal(bytes, &v); e == nil {
+			return &v, nil
+		}
+	}
+	doc, err := l.getDerivativeHistoryFromDB(ctx, symbol, resolution, from, to, countback)
 	if err != nil {
 		return nil, err
 	}

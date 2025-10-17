@@ -7,6 +7,7 @@ import (
 type SpotMarketSummary struct {
 	MarketSummaryCommon `json:",inline" bson:",inline"`
 }
+
 type ChartSpotConfig struct {
 	SupportedResolutions   []string `json:"supported_resolutions"`
 	SupportsGroupRequest   bool     `json:"supports_group_request"`

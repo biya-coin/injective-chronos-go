@@ -10,6 +10,12 @@ type ChartDerivativeConfig struct {
 	SupportsTimescaleMarks bool     `json:"supports_timescale_marks"`
 }
 
+type ChartDerivativeConfigRawDoc struct {
+	Kind      string                `bson:"kind"`
+	UpdatedAt time.Time             `bson:"updated_at"`
+	Data      ChartDerivativeConfig `bson:"data"`
+}
+
 type DerivativeMarketSummary struct {
 	MarketSummaryCommon `json:",inline" bson:",inline"`
 }
@@ -97,4 +103,35 @@ type DerivativeSymbolsRawDoc struct {
 	Symbol    string               `bson:"symbol"`
 	UpdatedAt time.Time            `bson:"updated_at"`
 	Data      DerivativeSymbolsRaw `bson:"data"`
+}
+
+type DerivativeHistoryRaw struct {
+	C float64 `json:"c" bson:"c"`
+	H float64 `json:"h" bson:"h"`
+	L float64 `json:"l" bson:"l"`
+	O float64 `json:"o" bson:"o"`
+	T int64   `json:"t" bson:"t"`
+	V float64 `json:"v" bson:"v"`
+}
+
+type DerivativeHistoryResponse struct {
+	DerivativeHistory `json:",inline" bson:",inline"`
+	S                 string `json:"s" bson:"s"`
+}
+type DerivativeHistoryRawDoc struct {
+	Kind       string               `bson:"kind"`
+	Symbol     string               `bson:"symbol"`
+	Resolution string               `bson:"resolution"`
+	UpdatedAt  time.Time            `bson:"updated_at"`
+	Data       DerivativeHistoryRaw `bson:"data"`
+	T          int64                `bson:"t"`
+}
+
+type DerivativeHistory struct {
+	C []float64 `json:"c" bson:"c"`
+	H []float64 `json:"h" bson:"h"`
+	L []float64 `json:"l" bson:"l"`
+	O []float64 `json:"o" bson:"o"`
+	T []int64   `json:"t" bson:"t"`
+	V []float64 `json:"v" bson:"v"`
 }

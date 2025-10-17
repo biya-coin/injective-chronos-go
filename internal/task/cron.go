@@ -47,6 +47,8 @@ func StartCron(ctx *svc.ServiceContext) {
 				go fetchAndStoreDerivativeSummaries(context.Background(), ctx, client)
 				go fetchAndStoreDerivativeSymbolInfo(context.Background(), ctx, client)
 				go fetchAndStoreDerivativeSymbols(context.Background(), ctx, client)
+				go fetchAndStoreDerivativeHistory(context.Background(), ctx, client)
+				go fetchAndStoreDerivativeConfig(context.Background(), ctx, client)
 
 			})
 		}

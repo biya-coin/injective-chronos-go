@@ -87,7 +87,7 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 	})
 	server.AddRoute(rest.Route{
 		Method: http.MethodGet,
-		Path:   "/api/chart/v1/derivative/config",
+		Path:   consts.DerivativeConfigPath,
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			DerivativeConfigHandler(ctx, w, r)
 		},
