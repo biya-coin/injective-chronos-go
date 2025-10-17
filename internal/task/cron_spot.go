@@ -277,3 +277,68 @@ func fetchAndStoreSpotSymbolInfo(ctxBg context.Context, svcCtx *svc.ServiceConte
 		}
 	}
 }
+
+func getSpotSymbolsList(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) ([]string, error) {
+	cur, err := svcCtx.SpotColl.Find(ctxBg, bson.M{"kind": "symbol_info"})
+	if err != nil {
+		logx.Errorf("get spot symbols list error: %v", err)
+		return nil, err
+	}
+	var symbols []model.SpotSymbolInfoRawDoc
+	var symbolList []string
+	if err := cur.All(ctxBg, &symbols); err != nil {
+		logx.Errorf("get spot symbols list error: %v", err)
+		return nil, err
+	}
+	for _, symbol := range symbols {
+		symbolList = append(symbolList, symbol.Symbol)
+	}
+	return symbolList, nil
+}
+
+func fetchAndStoreSpotSymbols(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			logx.Errorf("goroutine recovered from fetchAndStoreSpotSymbols: %v", r)
+		}
+	}()
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_symbols_fetch", 3*time.Second); !ok {
+		logx.Infof("fetchAndStoreSpotSymbols: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
+	symbolsList, err := getSpotSymbolsList(ctxBg, svcCtx, client)
+	if err != nil {
+		logx.Errorf("get spot symbols list error: %v", err)
+		return
+	}
+	for _, symbol := range symbolsList {
+		symbols, err := client.SpotSymbols(ctxBg, symbol)
+		if err != nil {
+			logx.Errorf("fetch spot symbols error: %v symbol:%s", err, symbol)
+			continue
+		}
+
+		filter := bson.M{
+			"kind":   "symbols",
+			"symbol": symbol,
+		}
+		count, err := svcCtx.SpotColl.CountDocuments(ctxBg, filter)
+		if err != nil {
+			logx.Errorf("count spot symbols -> symbol:%s: %v", symbol, err)
+			return
+		}
+		if count == 0 {
+			_, err = svcCtx.SpotColl.InsertOne(ctxBg, model.SpotSymbolsRawDoc{
+				Kind:      "symbols",
+				Symbol:    symbol,
+				Data:      *symbols,
+				UpdatedAt: time.Now(),
+			})
+			if err != nil {
+				logx.Errorf("insert spot symbols -> symbol:%s: %v", symbol, err)
+			}
+		}
+	}
+}

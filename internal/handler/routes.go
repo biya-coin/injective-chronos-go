@@ -62,6 +62,14 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 			SpotSymbolInfoHandler(ctx, w, r)
 		},
 	})
+
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   consts.SpotSymbolsPath,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			SpotSymbolsHandler(ctx, w, r)
+		},
+	})
 	// derivative
 	server.AddRoute(rest.Route{
 		Method: http.MethodGet,

@@ -21,17 +21,17 @@ func StartCron(ctx *svc.ServiceContext) {
 		defer ticker.Stop()
 		for {
 			<-ticker.C
-			protect("cron.tick.spot", func() {
-				logx.Infof("fetching task starting------->spot")
 
-				// Spot
-				go fetchAndStoreSpotConfig(context.Background(), ctx, client)
-				go fetchAndStoreSpotSummaryAll(context.Background(), ctx, client)
-				go fetchAndStoreSpotSummaries(context.Background(), ctx, client)
-				go fetchAndStoreSpotMarketHistory(context.Background(), ctx, client)
-				go fetchAndStoreSpotSymbolInfo(context.Background(), ctx, client)
+			logx.Infof("fetching task starting------->spot")
 
-			})
+			// Spot
+			go fetchAndStoreSpotConfig(context.Background(), ctx, client)
+			go fetchAndStoreSpotSummaryAll(context.Background(), ctx, client)
+			go fetchAndStoreSpotSummaries(context.Background(), ctx, client)
+			go fetchAndStoreSpotMarketHistory(context.Background(), ctx, client)
+			go fetchAndStoreSpotSymbolInfo(context.Background(), ctx, client)
+			go fetchAndStoreSpotSymbols(context.Background(), ctx, client)
+
 		}
 	}()
 

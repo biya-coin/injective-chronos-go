@@ -200,3 +200,35 @@ func (c *Client) SpotSymbolInfo(ctx context.Context, group string) (*model.SpotS
 	}
 	return &out, nil
 }
+
+func (c *Client) SpotSymbols(ctx context.Context, symbol string) (*model.SpotSymbolsRaw, error) {
+	q := url.Values{}
+	if symbol != "" {
+		q.Set("symbol", symbol)
+	} else {
+		return nil, fmt.Errorf("SpotSymbols request symbol is required")
+	}
+	endpoint := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.SpotSymbolsPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
+	if err != nil {
+		logx.Errorf("SpotSymbols new request error: %v", err)
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		logx.Errorf("SpotSymbols do request error: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		logx.Errorf("SpotSymbols request response error: %v", fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b)))
+		return nil, fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b))
+	}
+	var out model.SpotSymbolsRaw
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		logx.Errorf("SpotSymbols decode response error: %v", err)
+		return nil, err
+	}
+	return &out, nil
+}

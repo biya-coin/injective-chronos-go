@@ -114,5 +114,24 @@ func SpotSymbolInfoHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *ht
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, symbolInfo)
+	writeJSON(w, http.StatusOK, model.SpotSymbolInfoResponse{
+		SpotSymbolInfo: *symbolInfo,
+		S:              "ok",
+	})
+}
+
+func SpotSymbolsHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *http.Request) {
+	symbol := r.URL.Query().Get("symbol")
+	if symbol == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing symbol query param"})
+		return
+	}
+	lgc := logic.NewChartLogic(r.Context(), ctx)
+	symbols, err := lgc.GetSpotSymbols(r.Context(), symbol)
+	if err != nil {
+		logx.Errorf("SpotSymbols error: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, symbols)
 }

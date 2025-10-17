@@ -318,3 +318,50 @@ func (l *ChartLogic) GetSpotSymbolInfo(ctx context.Context, group string) (*mode
 	}
 	return doc, nil
 }
+
+func (l *ChartLogic) getSpotSymbolsFromDB(ctx context.Context, symbol string) (*model.SpotSymbolsRaw, error) {
+	opts := options.FindOne().SetSort(bson.D{{Key: "updated_at", Value: -1}})
+	var doc model.SpotSymbolsRawDoc
+	if err := l.svcCtx.SpotColl.FindOne(ctx, bson.M{"kind": "symbols", "symbol": symbol}, opts).Decode(&doc); err != nil {
+		return nil, err
+	}
+	return &doc.Data, nil
+}
+
+func (l *ChartLogic) GetSpotSymbols(ctx context.Context, symbol string) (*model.SpotSymbolsRaw, error) {
+
+	cacheKey := fmt.Sprintf("chart:spot:symbols:%s", symbol)
+	if symbol == "" {
+		return nil, fmt.Errorf("empty symbol")
+	}
+	if bytes, err := cache.GetOrLoadBytes(
+		ctx,
+		l.svcCtx.Redis,
+		cacheKey,
+		l.svcCtx.Config.Redis.TTLSeconds,
+		l.svcCtx.Config.Redis.JitterSeconds,
+		l.svcCtx.Config.Redis.LockTTLSeconds,
+		l.svcCtx.Config.Redis.RetryMs,
+		l.svcCtx.Config.Redis.RetryMax,
+		func(ctx context.Context) ([]byte, error) {
+			doc, err := l.getSpotSymbolsFromDB(ctx, symbol)
+			if err != nil {
+				logx.Errorf("getSpotSymbolsFromDB error: %v", err)
+				return nil, err
+			}
+			return json.Marshal(doc)
+		},
+	); err == nil && bytes != nil {
+		var v model.SpotSymbolsRaw
+		if e := json.Unmarshal(bytes, &v); e == nil {
+			return &v, nil
+		}
+	}
+	doc, err := l.getSpotSymbolsFromDB(ctx, symbol)
+	if err != nil {
+		logx.Errorf("getSpotSymbolsFromDB error: %v", err)
+		return nil, err
+	}
+	return doc, nil
+
+}
