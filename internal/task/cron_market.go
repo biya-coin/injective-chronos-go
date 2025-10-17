@@ -55,28 +55,25 @@ func fetchAndStoreMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContex
 		// 这里需要动态去算最新改的countback
 		// 先查数据库是否有数据，如果没有，那countback就是0
 		opts := options.FindOne().SetSort(bson.D{{Key: "updated_at", Value: -1}})
-		var doc bson.M
+		var doc model.MarketHistoryRawDoc
 		if err := svcCtx.MarketColl.FindOne(context.Background(), bson.M{"kind": "history", "resolution": res}, opts).Decode(&doc); err != nil {
 			countback = 0
 		} else {
 			// 当前时间的时间戳减去最新的一条数据的timestamp，得到时间差，再除以resolution，得到countback
 			// 加10是为了防止数据不足，导致countback为0
 			resolution, _ := strconv.ParseInt(res, 10, 64)
-			countback = int((time.Now().Unix()-doc["data"].(model.MarketHistoryRaw).T)/resolution) + 10
+			countback = int((time.Now().Unix()-doc.Data.T)/resolution) + 10
+		}
+		if countback > 1440 {
+			countback = 1440
 		}
 		marketIDs := getMarketHistoryAllIds(svcCtx, "24h")
 		// batch request to avoid very long query string
-		const batchSize = 50
-		for i := 0; i < len(marketIDs); i += batchSize {
-			end := i + batchSize
-			if end > len(marketIDs) {
-				end = len(marketIDs)
-			}
-			batch := marketIDs[i:end]
+		for _, marketId := range marketIDs {
 			protect("market.history.batch", func() {
-				rows, err := client.MarketHistory(ctxBg, batch, res, countback)
+				rows, err := client.MarketHistory(ctxBg, []string{marketId}, res, countback)
 				if err != nil {
-					logx.Errorf("fetch market history -> res %s batch %d-%d: %v", res, i, end, err)
+					logx.Errorf("fetch market history -> res %s marketId %s: %v", res, marketId, err)
 					return
 				}
 				for _, row := range rows {
@@ -84,7 +81,7 @@ func fetchAndStoreMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContex
 						// 先查询是否已存在该条记录，不存在则插入
 						filter := bson.M{
 							"kind":       "history",
-							"market":     row.MarketID,
+							"marketId":   row.MarketID,
 							"resolution": res,
 							"t":          row.T[t_index],
 						}
@@ -96,7 +93,7 @@ func fetchAndStoreMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContex
 						if count == 0 {
 							_, e := svcCtx.MarketColl.InsertOne(ctxBg, bson.M{
 								"kind":       "history",
-								"market":     row.MarketID,
+								"marketId":   row.MarketID,
 								"resolution": res,
 								"data": model.MarketHistoryRaw{
 									MarketID:   row.MarketID,

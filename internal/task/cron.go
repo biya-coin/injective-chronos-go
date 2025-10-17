@@ -21,19 +21,44 @@ func StartCron(ctx *svc.ServiceContext) {
 		defer ticker.Stop()
 		for {
 			<-ticker.C
-			protect("cron.tick", func() {
-				logx.Infof("fetching task starting")
+			protect("cron.tick.spot", func() {
+				logx.Infof("fetching task starting------->spot")
 
 				// Spot
-				fetchAndStoreSpotConfig(context.Background(), ctx, client)
-				fetchAndStoreSpotSummaryAll(context.Background(), ctx, client)
-				fetchAndStoreSpotSummaries(context.Background(), ctx, client)
-				fetchAndStoreSpotMarketHistory(context.Background(), ctx, client)
+				go fetchAndStoreSpotConfig(context.Background(), ctx, client)
+				go fetchAndStoreSpotSummaryAll(context.Background(), ctx, client)
+				go fetchAndStoreSpotSummaries(context.Background(), ctx, client)
+				go fetchAndStoreSpotMarketHistory(context.Background(), ctx, client)
+				go fetchAndStoreSpotSymbolInfo(context.Background(), ctx, client)
+
+			})
+		}
+	}()
+
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			<-ticker.C
+			protect("cron.tick.derivative", func() {
 
 				// Derivative
 				// derivativeResolutions := fetchAndStoreDerivativeConfig(context.Background(), ctx, client)
+				logx.Infof("fetching task starting------->derivative")
 				fetchAndStoreDerivativeSummaryAll(context.Background(), ctx, client)
 				fetchAndStoreDerivativeSummaries(context.Background(), ctx, client)
+
+			})
+		}
+	}()
+	go func() {
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		for {
+			<-ticker.C
+			protect("cron.tick.market", func() {
+
+				logx.Infof("fetching task starting------->market")
 
 				// Market
 				fetchAndStoreMarketHistory(context.Background(), ctx, client)

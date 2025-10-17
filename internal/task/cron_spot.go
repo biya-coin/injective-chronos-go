@@ -166,3 +166,57 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 		}
 	}
 }
+
+func fetchAndStoreSpotSymbolInfo(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	// TOOD:to confirm the group come form
+	logx.Infof("fetchAndStoreSpotSymbolInfo starting------->")
+	var group string = ""
+	symbolInfo, err := client.SpotSymbolInfo(ctxBg, group)
+	if err != nil {
+		logx.Errorf("fetch spot symbol info -> group:%s: %v", group, err)
+		return
+	}
+	IntradayMultipliers := symbolInfo.IntradayMultipliers
+	for index := 0; index < len(symbolInfo.Symbol); index++ {
+		filter := bson.M{
+			"kind":   "symbol_info",
+			"symbol": symbolInfo.Symbol[index],
+			"group":  group,
+		}
+		count, err := svcCtx.SpotColl.CountDocuments(ctxBg, filter)
+		if err != nil {
+			logx.Errorf("count spot symbol info -> symbol:%s: %v", symbolInfo.Symbol[index], err)
+			continue
+		}
+
+		if count == 0 {
+			_, err = svcCtx.SpotColl.InsertOne(ctxBg, model.SpotSymbolInfoRawDoc{
+				Kind:   "symbol_info",
+				Symbol: symbolInfo.Symbol[index],
+				Group:  group,
+				Data: model.SpotSymbolInfoRaw{
+					Symbol:              symbolInfo.Symbol[index],
+					Name:                symbolInfo.Name[index],
+					Description:         symbolInfo.Description[index],
+					Currency:            symbolInfo.Currency[index],
+					ExchangeListed:      symbolInfo.ExchangeListed[index],
+					ExchangeTraded:      symbolInfo.ExchangeTraded[index],
+					Minmovement:         symbolInfo.Minmovement[index],
+					Pricescale:          symbolInfo.Pricescale[index],
+					Timezone:            symbolInfo.Timezone[index],
+					Type:                symbolInfo.Type[index],
+					SessionRegular:      symbolInfo.SessionRegular[index],
+					BaseCurrency:        symbolInfo.BaseCurrency[index],
+					HasIntraday:         symbolInfo.HasIntraday[index],
+					Ticker:              symbolInfo.Ticker[index],
+					IntradayMultipliers: IntradayMultipliers,
+					BarFillgaps:         symbolInfo.BarFillgaps[index],
+				},
+				UpdatedAt: time.Now(),
+			})
+			if err != nil {
+				logx.Errorf("insert spot symbol info -> symbol:%s: %v", symbolInfo.Symbol[index], err)
+			}
+		}
+	}
+}

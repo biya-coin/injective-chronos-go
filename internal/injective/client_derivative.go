@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
 )
 
@@ -17,7 +18,7 @@ func (c *Client) DerivativeMarketSummaryAll(ctx context.Context, resolution stri
 	if resolution != "" {
 		q.Set("resolution", resolution)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.DerivativeSummaryAllPath)+"?"+q.Encode(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.DerivativeSummaryAllPath)+"?"+q.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +39,7 @@ func (c *Client) DerivativeMarketSummaryAll(ctx context.Context, resolution stri
 
 func (c *Client) DerivativeMarketSummaryAtResolution(ctx context.Context, market string, resolution string) (*model.DerivativeMarketSummary, error) {
 	var out model.DerivativeMarketSummary
-	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.DerivativeSummaryPath)
+	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.DerivativeSummaryPath)
 	q := url.Values{}
 	q.Set("indexPrice", "false")
 	if market != "" {
@@ -67,7 +68,7 @@ func (c *Client) DerivativeMarketSummaryAtResolution(ctx context.Context, market
 }
 
 func (c *Client) DerivativeConfig(ctx context.Context) (*model.ChartDerivativeConfig, error) {
-	url := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.DerivativeConfigPath)
+	url := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.DerivativeConfigPath)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err

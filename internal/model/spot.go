@@ -34,3 +34,48 @@ type SpotHistoryDoc struct {
 	UpdatedAt  time.Time            `bson:"updated_at"`
 	Data       SpotMarketHistoryRaw `bson:"data"`
 }
+
+type SpotSymbolInfoRaw struct {
+	Symbol              string   `json:"symbol" bson:"symbol"`
+	Name                string   `json:"name" bson:"name"`
+	Description         string   `json:"description" bson:"description"`
+	Currency            string   `json:"currency" bson:"currency"`
+	ExchangeListed      string   `json:"exchange-listed" bson:"exchange-listed"`
+	ExchangeTraded      string   `json:"exchange-traded" bson:"exchange-traded"`
+	Minmovement         int      `json:"minmovement" bson:"minmovement"`
+	Pricescale          int      `json:"pricescale" bson:"pricescale"`
+	Timezone            string   `json:"timezone" bson:"timezone"`
+	Type                string   `json:"type" bson:"type"`
+	SessionRegular      string   `json:"session-regular" bson:"session-regular"`
+	BaseCurrency        string   `json:"base-currency" bson:"base-currency"`
+	HasIntraday         bool     `json:"has-intraday" bson:"has-intraday"`
+	Ticker              string   `json:"ticker" bson:"ticker"`
+	IntradayMultipliers []string `json:"intraday-multipliers" bson:"intraday-multipliers"`
+	BarFillgaps         bool     `json:"bar-fillgaps" bson:"bar-fillgaps"`
+}
+type SpotSymbolInfo struct {
+	Symbol              []string `json:"symbol" bson:"symbol"`
+	Name                []string `json:"name" bson:"name"`
+	Description         []string `json:"description" bson:"description"`
+	Currency            []string `json:"currency" bson:"currency"`
+	ExchangeListed      []string `json:"exchange-listed" bson:"exchange-listed"`
+	ExchangeTraded      []string `json:"exchange-traded" bson:"exchange-traded"`
+	Minmovement         []int    `json:"minmovement" bson:"minmovement"`
+	Pricescale          []int    `json:"pricescale" bson:"pricescale"`
+	Timezone            []string `json:"timezone" bson:"timezone"`
+	Type                []string `json:"type" bson:"type"`
+	SessionRegular      []string `json:"session-regular" bson:"session-regular"`
+	BaseCurrency        []string `json:"base-currency" bson:"base-currency"`
+	HasIntraday         []bool   `json:"has-intraday" bson:"has-intraday"`
+	Ticker              []string `json:"ticker" bson:"ticker"`
+	IntradayMultipliers []string `json:"intraday-multipliers" bson:"intraday-multipliers"`
+	BarFillgaps         []bool   `json:"bar-fillgaps" bson:"bar-fillgaps"`
+}
+
+type SpotSymbolInfoRawDoc struct {
+	Kind      string            `bson:"kind"`
+	Symbol    string            `bson:"symbol"`
+	Group     string            `bson:"group"`
+	UpdatedAt time.Time         `bson:"updated_at"`
+	Data      SpotSymbolInfoRaw `bson:"data"`
+}

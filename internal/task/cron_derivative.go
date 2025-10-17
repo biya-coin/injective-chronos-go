@@ -50,7 +50,9 @@ func fetchAndStoreDerivativeSummaries(ctxBg context.Context, svcCtx *svc.Service
 				defer wg.Done()
 				defer func() { <-sem }()
 				defer recoverAndLog("derivative.worker:" + res + ":" + mid)
-				one, err := client.DerivativeMarketSummaryAtResolution(ctxBg, mid, res)
+				ctx, cancel := context.WithTimeout(ctxBg, 30*time.Second)
+				defer cancel()
+				one, err := client.DerivativeMarketSummaryAtResolution(ctx, mid, res)
 				if err != nil {
 					logx.Errorf("fetch derivative summary %s %s: %v", mid, res, err)
 					return

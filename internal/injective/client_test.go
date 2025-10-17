@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/biya-coin/injective-chronos-go/internal/config"
+	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
 )
 
@@ -40,13 +41,10 @@ func newTestServer(t *testing.T, expectedMethod, expectedPath string, wantBody a
 
 func TestClient_SpotMarketSummaryAll(t *testing.T) {
 	resp := []model.MarketSummaryCommon{{MarketID: "m1"}}
-	ts := newTestServer(t, http.MethodGet, "/spot-all", nil, resp, http.StatusOK)
+	ts := newTestServer(t, http.MethodGet, consts.SpotSummaryAllPath, nil, resp, http.StatusOK)
 	defer ts.Close()
 
-	c := NewClient(config.InjectiveConf{
-		BaseURL:            ts.URL,
-		SpotSummaryAllPath: "/spot-all",
-	}, ts.Client())
+	c := NewClient(config.InjectiveConf{BaseURL: ts.URL}, ts.Client())
 
 	out, err := c.SpotMarketSummaryAll(context.Background(), "24h")
 	if err != nil {
@@ -59,13 +57,10 @@ func TestClient_SpotMarketSummaryAll(t *testing.T) {
 
 func TestClient_SpotMarketSummary(t *testing.T) {
 	resp := model.MarketSummaryCommon{MarketID: "ETH-USDT"}
-	ts := newTestServer(t, http.MethodGet, "/spot", nil, resp, http.StatusOK)
+	ts := newTestServer(t, http.MethodGet, consts.SpotSummaryPath, nil, resp, http.StatusOK)
 	defer ts.Close()
 
-	c := NewClient(config.InjectiveConf{
-		BaseURL:         ts.URL,
-		SpotSummaryPath: "/spot",
-	}, ts.Client())
+	c := NewClient(config.InjectiveConf{BaseURL: ts.URL}, ts.Client())
 
 	out, err := c.SpotMarketSummary(context.Background(), "ETH-USDT")
 	if err != nil {
@@ -78,13 +73,10 @@ func TestClient_SpotMarketSummary(t *testing.T) {
 
 func TestClient_SpotMarketSummaryAtResolution(t *testing.T) {
 	resp := model.MarketSummaryCommon{MarketID: "ETH-USDT"}
-	ts := newTestServer(t, http.MethodGet, "/spot", nil, resp, http.StatusOK)
+	ts := newTestServer(t, http.MethodGet, consts.SpotSummaryPath, nil, resp, http.StatusOK)
 	defer ts.Close()
 
-	c := NewClient(config.InjectiveConf{
-		BaseURL:         ts.URL,
-		SpotSummaryPath: "/spot",
-	}, ts.Client())
+	c := NewClient(config.InjectiveConf{BaseURL: ts.URL}, ts.Client())
 
 	out, err := c.SpotMarketSummaryAtResolution(context.Background(), "ETH-USDT", "24h")
 	if err != nil {
@@ -97,13 +89,10 @@ func TestClient_SpotMarketSummaryAtResolution(t *testing.T) {
 
 func TestClient_DerivativeMarketSummaryAll(t *testing.T) {
 	resp := []model.MarketSummaryCommon{{MarketID: "d1"}}
-	ts := newTestServer(t, http.MethodGet, "/deriv-all", nil, resp, http.StatusOK)
+	ts := newTestServer(t, http.MethodGet, consts.DerivativeSummaryAllPath, nil, resp, http.StatusOK)
 	defer ts.Close()
 
-	c := NewClient(config.InjectiveConf{
-		BaseURL:                  ts.URL,
-		DerivativeSummaryAllPath: "/deriv-all",
-	}, ts.Client())
+	c := NewClient(config.InjectiveConf{BaseURL: ts.URL}, ts.Client())
 
 	out, err := c.DerivativeMarketSummaryAll(context.Background(), "24h")
 	if err != nil {
@@ -116,13 +105,10 @@ func TestClient_DerivativeMarketSummaryAll(t *testing.T) {
 
 func TestClient_DerivativeMarketSummaryAtResolution(t *testing.T) {
 	resp := model.MarketSummaryCommon{MarketID: "PERP-ETH"}
-	ts := newTestServer(t, http.MethodGet, "/deriv", nil, resp, http.StatusOK)
+	ts := newTestServer(t, http.MethodGet, consts.DerivativeSummaryPath, nil, resp, http.StatusOK)
 	defer ts.Close()
 
-	c := NewClient(config.InjectiveConf{
-		BaseURL:               ts.URL,
-		DerivativeSummaryPath: "/deriv",
-	}, ts.Client())
+	c := NewClient(config.InjectiveConf{BaseURL: ts.URL}, ts.Client())
 
 	out, err := c.DerivativeMarketSummaryAtResolution(context.Background(), "PERP-ETH", "24h")
 	if err != nil {
@@ -141,13 +127,10 @@ func TestClient_SpotConfig(t *testing.T) {
 		"supports_search":          true,
 		"supports_timescale_marks": false,
 	}
-	ts := newTestServer(t, http.MethodGet, "/spot-config", nil, resp, http.StatusOK)
+	ts := newTestServer(t, http.MethodGet, consts.SpotConfigPath, nil, resp, http.StatusOK)
 	defer ts.Close()
 
-	c := NewClient(config.InjectiveConf{
-		BaseURL:        ts.URL,
-		SpotConfigPath: "/spot-config",
-	}, ts.Client())
+	c := NewClient(config.InjectiveConf{BaseURL: ts.URL}, ts.Client())
 
 	out, err := c.SpotConfig(context.Background())
 	if err != nil {
@@ -166,13 +149,10 @@ func TestClient_DerivativeConfig(t *testing.T) {
 		"supports_search":          true,
 		"supports_timescale_marks": false,
 	}
-	ts := newTestServer(t, http.MethodGet, "/deriv-config", nil, resp, http.StatusOK)
+	ts := newTestServer(t, http.MethodGet, consts.DerivativeConfigPath, nil, resp, http.StatusOK)
 	defer ts.Close()
 
-	c := NewClient(config.InjectiveConf{
-		BaseURL:              ts.URL,
-		DerivativeConfigPath: "/deriv-config",
-	}, ts.Client())
+	c := NewClient(config.InjectiveConf{BaseURL: ts.URL}, ts.Client())
 
 	out, err := c.DerivativeConfig(context.Background())
 	if err != nil {

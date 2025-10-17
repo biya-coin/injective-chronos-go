@@ -2,13 +2,29 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/zeromicro/go-zero/rest"
 
+	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/svc"
 )
 
+// health check
+func HealthHandler(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, map[string]interface{}{"ts": time.Now().Unix()})
+}
+
 func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
+	// 全局设置 CORS 响应头
+	server.Use(func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			w.Header().Set("Access-Control-Allow-Origin", "*")
+			next(w, r)
+		}
+	})
+
 	// spot
 	server.AddRoute(rest.Route{
 		Method: http.MethodGet,
@@ -36,6 +52,14 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 		Path:   "/api/chart/v1/spot/history",
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			SpotMarketHistoryHandler(ctx, w, r)
+		},
+	})
+
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   consts.SpotSymbolInfoPath,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			SpotSymbolInfoHandler(ctx, w, r)
 		},
 	})
 	// derivative

@@ -8,12 +8,13 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
 func (c *Client) SpotConfig(ctx context.Context) (*model.ChartSpotConfig, error) {
-	url := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.SpotConfigPath)
+	url := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.SpotConfigPath)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
 	if err != nil {
 		return nil, err
@@ -40,7 +41,7 @@ func (c *Client) SpotMarketSummaryAll(ctx context.Context, resolution string) ([
 	if resolution != "" {
 		q.Set("resolution", resolution)
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.SpotSummaryAllPath)+"?"+q.Encode(), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.SpotSummaryAllPath)+"?"+q.Encode(), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -61,7 +62,7 @@ func (c *Client) SpotMarketSummaryAll(ctx context.Context, resolution string) ([
 
 func (c *Client) SpotMarketSummary(ctx context.Context, market string) (*model.SpotMarketSummary, error) {
 	var out model.SpotMarketSummary
-	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.SpotSummaryPath)
+	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.SpotSummaryPath)
 	q := url.Values{}
 	if market != "" {
 		q.Set("market", market)
@@ -87,7 +88,7 @@ func (c *Client) SpotMarketSummary(ctx context.Context, market string) (*model.S
 
 func (c *Client) SpotMarketSummaryAtResolution(ctx context.Context, market string, resolution string) (*model.SpotMarketSummary, error) {
 	var out model.SpotMarketSummary
-	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.SpotSummaryPath)
+	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.SpotSummaryPath)
 	q := url.Values{}
 	q.Set("indexPrice", "false")
 	if market != "" {
@@ -146,7 +147,7 @@ func (c *Client) SpotMarketHistory(ctx context.Context, from int64, to int64, ma
 		q.Set("to", fmt.Sprintf("%d", to))
 	}
 
-	endpoint := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.SpotHistoryPath)
+	endpoint := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.SpotHistoryPath)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
 		logx.Errorf("SpotMarketHistory new request error: %v", err)
@@ -169,4 +170,33 @@ func (c *Client) SpotMarketHistory(ctx context.Context, from int64, to int64, ma
 		return model.SpotMarketHistory{}, err
 	}
 	return out, nil
+}
+
+func (c *Client) SpotSymbolInfo(ctx context.Context, group string) (*model.SpotSymbolInfo, error) {
+	q := url.Values{}
+	q.Set("group", group)
+
+	endpoint := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.SpotSymbolInfoPath)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
+	if err != nil {
+		logx.Errorf("SpotSymbolInfo new request error: %v", err)
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		logx.Errorf("SpotSymbolInfo do request error: %v", err)
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		logx.Errorf("SpotSymbolInfo request response error: %v", fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b)))
+		return nil, fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b))
+	}
+	var out model.SpotSymbolInfo
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		logx.Errorf("SpotSymbolInfo decode response error: %v", err)
+		return nil, err
+	}
+	return &out, nil
 }

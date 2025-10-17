@@ -234,3 +234,87 @@ func (l *ChartLogic) GetMarketHistorySpot(ctx context.Context, marketId string, 
 	}
 	return result, nil
 }
+
+func (l *ChartLogic) getSpotSymbolInfoFromDB(ctx context.Context, group string) (*model.SpotSymbolInfo, error) {
+	cur, err := l.svcCtx.SpotColl.Find(ctx, bson.M{"kind": "symbol_info", "group": group})
+	if err != nil {
+		return nil, err
+	}
+	var doc []model.SpotSymbolInfoRawDoc
+	if err := cur.All(ctx, &doc); err != nil {
+		return nil, err
+	}
+	if len(doc) == 0 {
+		return nil, fmt.Errorf("no symbol info found")
+	}
+	IntradayMultipliers := doc[0].Data.IntradayMultipliers
+	var out model.SpotSymbolInfo = model.SpotSymbolInfo{
+		Symbol:              make([]string, 0),
+		Name:                make([]string, 0),
+		Description:         make([]string, 0),
+		Currency:            make([]string, 0),
+		ExchangeListed:      make([]string, 0),
+		ExchangeTraded:      make([]string, 0),
+		Minmovement:         make([]int, 0),
+		Pricescale:          make([]int, 0),
+		Timezone:            make([]string, 0),
+		Type:                make([]string, 0),
+		SessionRegular:      make([]string, 0),
+		BaseCurrency:        make([]string, 0),
+		HasIntraday:         make([]bool, 0),
+		Ticker:              make([]string, 0),
+		IntradayMultipliers: IntradayMultipliers,
+		BarFillgaps:         make([]bool, 0),
+	}
+	for _, d := range doc {
+		out.Symbol = append(out.Symbol, d.Data.Symbol)
+		out.Name = append(out.Name, d.Data.Name)
+		out.Description = append(out.Description, d.Data.Description)
+		out.Currency = append(out.Currency, d.Data.Currency)
+		out.ExchangeListed = append(out.ExchangeListed, d.Data.ExchangeListed)
+		out.ExchangeTraded = append(out.ExchangeTraded, d.Data.ExchangeTraded)
+		out.Minmovement = append(out.Minmovement, d.Data.Minmovement)
+		out.Pricescale = append(out.Pricescale, d.Data.Pricescale)
+		out.Timezone = append(out.Timezone, d.Data.Timezone)
+		out.Type = append(out.Type, d.Data.Type)
+		out.SessionRegular = append(out.SessionRegular, d.Data.SessionRegular)
+		out.BaseCurrency = append(out.BaseCurrency, d.Data.BaseCurrency)
+		out.HasIntraday = append(out.HasIntraday, d.Data.HasIntraday)
+		out.Ticker = append(out.Ticker, d.Data.Ticker)
+		out.BarFillgaps = append(out.BarFillgaps, d.Data.BarFillgaps)
+	}
+	return &out, nil
+}
+
+func (l *ChartLogic) GetSpotSymbolInfo(ctx context.Context, group string) (*model.SpotSymbolInfo, error) {
+	cacheKey := fmt.Sprintf("chart:spot:symbol_info:%s", group)
+	if bytes, err := cache.GetOrLoadBytes(
+		ctx,
+		l.svcCtx.Redis,
+		cacheKey,
+		l.svcCtx.Config.Redis.TTLSeconds,
+		l.svcCtx.Config.Redis.JitterSeconds,
+		l.svcCtx.Config.Redis.LockTTLSeconds,
+		l.svcCtx.Config.Redis.RetryMs,
+		l.svcCtx.Config.Redis.RetryMax,
+		func(ctx context.Context) ([]byte, error) {
+			doc, err := l.getSpotSymbolInfoFromDB(ctx, group)
+			if err != nil {
+				logx.Errorf("getSpotSymbolInfoFromDB error: %v", err)
+				return nil, err
+			}
+			return json.Marshal(doc)
+		},
+	); err == nil && bytes != nil {
+		var v model.SpotSymbolInfo
+		if e := json.Unmarshal(bytes, &v); e == nil {
+			return &v, nil
+		}
+	}
+	doc, err := l.getSpotSymbolInfoFromDB(ctx, group)
+	if err != nil {
+		logx.Errorf("getSpotSymbolInfoFromDB error: %v", err)
+		return nil, err
+	}
+	return doc, nil
+}

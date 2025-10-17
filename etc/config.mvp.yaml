@@ -3,11 +3,11 @@ Host: 0.0.0.0
 Port: 4442
 
 Redis:
-  Address: 10.0.0.2:26379
-  Password: xZrGg733gzPvq6Mcp0tu2tqApj6r5wNT
+  Address: redis:6379
+  Password: o6ex6A9gTobFzmX3YM8IyOwA3ZAcYKOD
   DB: 0
   TTLSeconds: 300
-  JitterSeconds: 60
+  JitterSeconds: 1
   LockTTLSeconds: 10
   RetryMs: 50
   RetryMax: 20
@@ -15,7 +15,7 @@ Redis:
 
 
 Mongo:
-  URI: mongodb://root:bpCrKhVqlymUFMhvGkRTQX7NGWX2H5kn@10.0.0.2:27017/?authSource=admin
+  URI: mongodb://root:bMDhGwa14pDGeszab4c5y5WCLrSYnEbW@mongo:27017/?authSource=admin
   Database: chart
   Collections:
     Spot: spot
@@ -23,10 +23,10 @@ Mongo:
     Market: market
 
 Injective:
-  BaseURL: https://sentry.exchange.grpc-web.injective.network
+  BaseURL: https://k8s.global.mainnet.chart.grpc-web.injective.network
   TimeoutMs: 10000
 
 Cron:
   Enabled: true
-  IntervalSec: 10
+  IntervalSec: 60
 

@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 
+	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -39,7 +40,7 @@ func (c *Client) MarketHistory(ctx context.Context, marketIDs []string, resoluti
 		q.Set("countback", "")
 	}
 
-	endpoint := fmt.Sprintf("%s%s", c.cfg.BaseURL, c.cfg.MarketHistoryPath)
+	endpoint := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.MarketHistoryPath)
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint+"?"+q.Encode(), nil)
 	if err != nil {
 		logx.Errorf("MarketHistory new request error: %v", err)

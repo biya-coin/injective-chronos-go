@@ -28,16 +28,8 @@ type MongoConf struct {
 }
 
 type InjectiveConf struct {
-	BaseURL                  string
-	SpotSummaryAllPath       string
-	SpotSummaryPath          string
-	SpotConfigPath           string
-	SpotHistoryPath          string
-	DerivativeSummaryAllPath string
-	DerivativeSummaryPath    string
-	DerivativeConfigPath     string
-	MarketHistoryPath        string
-	TimeoutMs                int
+	BaseURL   string
+	TimeoutMs int
 }
 
 type CronConf struct {

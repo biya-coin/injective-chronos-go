@@ -1,5 +1,7 @@
 package model
 
+import "time"
+
 type MarketSummaryCommon struct {
 	MarketID string  `json:"marketId" bson:"marketId"`
 	Open     float64 `json:"open" bson:"open"`
@@ -27,6 +29,15 @@ type MarketHistoryRaw struct {
 	L          float64 `json:"l" bson:"l"`
 	C          float64 `json:"c" bson:"c"`
 	V          float64 `json:"v" bson:"v"`
+}
+
+type MarketHistoryRawDoc struct {
+	Kind       string           `bson:"kind"`
+	Resolution string           `bson:"resolution"`
+	T          int64            `bson:"t"`
+	UpdatedAt  time.Time        `bson:"updated_at"`
+	Data       MarketHistoryRaw `bson:"data"`
+	MarketId   string           `bson:"marketId"`
 }
 
 type MarketHistory struct {
