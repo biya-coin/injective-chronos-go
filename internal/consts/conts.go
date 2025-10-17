@@ -28,6 +28,7 @@ const (
 	DerivativeConfigPath     = "/api/chart/v1/derivative/config"
 	DerivativeSymbolInfoPath = "/api/chart/v1/derivative/symbol_info"
 	DerivativeSymbolsPath    = "/api/chart/v1/derivative/symbols"
+	DerivativeHistoryPath    = "/api/chart/v1/derivative/history"
 	// market
 	MarketHistoryPath = "/api/chart/v1/market/history"
 )

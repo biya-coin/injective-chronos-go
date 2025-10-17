@@ -43,8 +43,10 @@ func StartCron(ctx *svc.ServiceContext) {
 				// Derivative
 				// derivativeResolutions := fetchAndStoreDerivativeConfig(context.Background(), ctx, client)
 				cronInfof("fetching task starting------->derivative")
-				fetchAndStoreDerivativeSummaryAll(context.Background(), ctx, client)
-				fetchAndStoreDerivativeSummaries(context.Background(), ctx, client)
+				go fetchAndStoreDerivativeSummaryAll(context.Background(), ctx, client)
+				go fetchAndStoreDerivativeSummaries(context.Background(), ctx, client)
+				go fetchAndStoreDerivativeSymbolInfo(context.Background(), ctx, client)
+				go fetchAndStoreDerivativeSymbols(context.Background(), ctx, client)
 
 			})
 		}

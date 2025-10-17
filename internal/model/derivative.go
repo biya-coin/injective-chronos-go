@@ -1,13 +1,8 @@
 package model
 
-import (
-	"time"
-)
+import "time"
 
-type SpotMarketSummary struct {
-	MarketSummaryCommon `json:",inline" bson:",inline"`
-}
-type ChartSpotConfig struct {
+type ChartDerivativeConfig struct {
 	SupportedResolutions   []string `json:"supported_resolutions"`
 	SupportsGroupRequest   bool     `json:"supports_group_request"`
 	SupportsMarks          bool     `json:"supports_marks"`
@@ -15,38 +10,11 @@ type ChartSpotConfig struct {
 	SupportsTimescaleMarks bool     `json:"supports_timescale_marks"`
 }
 
-type SpotMarketHistoryRaw struct {
-	T int64   `json:"t" bson:"t"`
-	O float64 `json:"o" bson:"o"`
-	H float64 `json:"h" bson:"h"`
-	L float64 `json:"l" bson:"l"`
-	C float64 `json:"c" bson:"c"`
-	V float64 `json:"v" bson:"v"`
+type DerivativeMarketSummary struct {
+	MarketSummaryCommon `json:",inline" bson:",inline"`
 }
 
-type SpotMarketHistory struct {
-	T []int64   `json:"t" bson:"t"`
-	O []float64 `json:"o" bson:"o"`
-	H []float64 `json:"h" bson:"h"`
-	L []float64 `json:"l" bson:"l"`
-	C []float64 `json:"c" bson:"c"`
-	V []float64 `json:"v" bson:"v"`
-}
-
-type SpotMarketHistoryResponse struct {
-	SpotMarketHistory `json:",inline" bson:",inline"`
-	S                 string `json:"s" bson:"s"`
-}
-
-type SpotHistoryDoc struct {
-	Kind       string               `bson:"kind"`
-	Resolution string               `bson:"resolution"`
-	T          int64                `bson:"t"`
-	UpdatedAt  time.Time            `bson:"updated_at"`
-	Data       SpotMarketHistoryRaw `bson:"data"`
-}
-
-type SpotSymbolInfoRaw struct {
+type DerivativeSymbolInfoRaw struct {
 	Symbol              string   `json:"symbol" bson:"symbol"`
 	Name                string   `json:"name" bson:"name"`
 	Description         string   `json:"description" bson:"description"`
@@ -64,7 +32,8 @@ type SpotSymbolInfoRaw struct {
 	IntradayMultipliers []string `json:"intraday-multipliers" bson:"intraday-multipliers"`
 	BarFillgaps         bool     `json:"bar-fillgaps" bson:"bar-fillgaps"`
 }
-type SpotSymbolInfo struct {
+
+type DerivativeSymbolInfo struct {
 	Symbol              []string `json:"symbol" bson:"symbol"`
 	Name                []string `json:"name" bson:"name"`
 	Description         []string `json:"description" bson:"description"`
@@ -83,20 +52,20 @@ type SpotSymbolInfo struct {
 	BarFillgaps         []bool   `json:"bar-fillgaps" bson:"bar-fillgaps"`
 }
 
-type SpotSymbolInfoRawDoc struct {
-	Kind      string            `bson:"kind"`
-	Symbol    string            `bson:"symbol"`
-	Group     string            `bson:"group"`
-	UpdatedAt time.Time         `bson:"updated_at"`
-	Data      SpotSymbolInfoRaw `bson:"data"`
+type DerivativeSymbolInfoRawDoc struct {
+	Kind      string                  `bson:"kind"`
+	Symbol    string                  `bson:"symbol"`
+	Group     string                  `bson:"group"`
+	UpdatedAt time.Time               `bson:"updated_at"`
+	Data      DerivativeSymbolInfoRaw `bson:"data"`
 }
 
-type SpotSymbolInfoResponse struct {
-	SpotSymbolInfo `json:",inline" bson:",inline"`
-	S              string `json:"s" bson:"s"`
+type DerivativeSymbolInfoResponse struct {
+	DerivativeSymbolInfo `json:",inline" bson:",inline"`
+	S                    string `json:"s" bson:"s"`
 }
 
-type SpotSymbolsRaw struct {
+type DerivativeSymbolsRaw struct {
 	Symbol               string   `json:"symbol" bson:"symbol"`
 	Ticker               string   `json:"ticker" bson:"ticker"`
 	Name                 string   `json:"name" bson:"name"`
@@ -123,9 +92,9 @@ type SpotSymbolsRaw struct {
 	CurrencyCode         string   `json:"currency_code" bson:"currency_code"`
 }
 
-type SpotSymbolsRawDoc struct {
-	Kind      string         `bson:"kind"`
-	Symbol    string         `bson:"symbol"`
-	UpdatedAt time.Time      `bson:"updated_at"`
-	Data      SpotSymbolsRaw `bson:"data"`
+type DerivativeSymbolsRawDoc struct {
+	Kind      string               `bson:"kind"`
+	Symbol    string               `bson:"symbol"`
+	UpdatedAt time.Time            `bson:"updated_at"`
+	Data      DerivativeSymbolsRaw `bson:"data"`
 }

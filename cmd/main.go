@@ -36,6 +36,9 @@ func main() {
 	}
 	conf.MustLoad(cfgPath, &c)
 
+	// Use plain (formatted) log encoding instead of json
+	_ = logx.SetUp(logx.LogConf{Encoding: "plain"})
+
 	logx.Infof("env=%s config=%s", env, cfgPath)
 	logx.Infof("starting %s on %s:%d", c.Name, c.Host, c.Port)
 

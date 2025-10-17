@@ -94,11 +94,26 @@ func RegisterHandlers(server *rest.Server, ctx *svc.ServiceContext) {
 	})
 	server.AddRoute(rest.Route{
 		Method: http.MethodGet,
-		Path:   "/api/chart/v1/derivative/history",
+		Path:   consts.DerivativeHistoryPath,
 		Handler: func(w http.ResponseWriter, r *http.Request) {
 			DerivativeMarketHistoryHandler(ctx, w, r)
 		},
 	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   consts.DerivativeSymbolInfoPath,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			DerivativeSymbolInfoHandler(ctx, w, r)
+		},
+	})
+	server.AddRoute(rest.Route{
+		Method: http.MethodGet,
+		Path:   consts.DerivativeSymbolsPath,
+		Handler: func(w http.ResponseWriter, r *http.Request) {
+			DerivativeSymbolsHandler(ctx, w, r)
+		},
+	})
+
 	// market
 	server.AddRoute(rest.Route{
 		Method: http.MethodGet,

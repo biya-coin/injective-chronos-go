@@ -88,3 +88,53 @@ func (c *Client) DerivativeConfig(ctx context.Context) (*model.ChartDerivativeCo
 	}
 	return &out, nil
 }
+
+func (c *Client) DerivativeSymbolInfo(ctx context.Context, group string) (*model.DerivativeSymbolInfo, error) {
+	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.DerivativeSymbolInfoPath)
+	q := url.Values{}
+	if group != "" {
+		q.Set("group", group)
+	}
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u+"?"+q.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b))
+	}
+	var out model.DerivativeSymbolInfo
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (c *Client) DerivativeSymbols(ctx context.Context, symbol string) (*model.DerivativeSymbolsRaw, error) {
+	u := fmt.Sprintf("%s%s", c.cfg.BaseURL, consts.DerivativeSymbolsPath)
+	q := url.Values{}
+	q.Set("symbol", symbol)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u+"?"+q.Encode(), nil)
+	if err != nil {
+		return nil, err
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode >= 300 {
+		b, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("injective http %d: %s", resp.StatusCode, string(b))
+	}
+	var out model.DerivativeSymbolsRaw
+	if err := json.NewDecoder(resp.Body).Decode(&out); err != nil {
+		return nil, err
+	}
+	return &out, nil
+}

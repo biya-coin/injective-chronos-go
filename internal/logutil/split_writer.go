@@ -2,6 +2,7 @@ package logutil
 
 import (
 	"bytes"
+	"io"
 	"os"
 	"path/filepath"
 	"sync"
@@ -12,6 +13,7 @@ import (
 type SplitWriter struct {
 	apiFile  *os.File
 	cronFile *os.File
+	console  io.Writer
 	mu       sync.Mutex
 }
 
@@ -31,14 +33,23 @@ func NewSplitWriter(apiPath, cronPath string) (*SplitWriter, error) {
 		_ = apiF.Close()
 		return nil, err
 	}
-	return &SplitWriter{apiFile: apiF, cronFile: cronF}, nil
+	return &SplitWriter{apiFile: apiF, cronFile: cronF, console: os.Stdout}, nil
 }
 
 func (w *SplitWriter) Write(p []byte) (int, error) {
 	w.mu.Lock()
 	defer w.mu.Unlock()
-	if bytes.HasPrefix(p, []byte("[CRON]")) || bytes.HasPrefix(p, []byte("CRON|")) {
+	// logx 会在每行前增加时间/级别等前缀，因此这里用 Contains 匹配标记
+	if bytes.Contains(p, []byte("[CRON]")) || bytes.Contains(p, []byte("CRON|")) {
+		// 只写入 cron 文件
 		return w.cronFile.Write(p)
 	}
-	return w.apiFile.Write(p)
+	// API 日志：写文件并镜像到 console
+	if _, err := w.apiFile.Write(p); err != nil {
+		return 0, err
+	}
+	if w.console != nil {
+		_, _ = w.console.Write(p)
+	}
+	return len(p), nil
 }

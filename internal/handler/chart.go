@@ -88,10 +88,12 @@ func MarketHistoryHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *htt
 // Query: marketIDs=... (repeatable), resolution=5, countback=100
 func DerivativeMarketHistoryHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
-	marketIDs := q["marketIDs"]
+	symbol := q.Get("symbol")
+	marketId := q.Get("marketId")
 	resolution := q.Get("resolution")
 	if resolution == "" {
-		resolution = "5"
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing resolution query param"})
+		return
 	}
 	// countback optional
 	countback := 0
@@ -101,18 +103,33 @@ func DerivativeMarketHistoryHandler(ctx *svc.ServiceContext, w http.ResponseWrit
 		}
 	}
 
-	if len(marketIDs) == 0 {
-		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing marketIDs"})
+	from := q.Get("from")
+	var fromInt int64 = 0
+	if from != "" && from != "0" {
+		fromInt, _ = strconv.ParseInt(from, 10, 64)
+	}
+	to := q.Get("to")
+	if to == "" || to == "0" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing to  query param"})
+		return
+	}
+	var toInt int64 = 0
+	toInt, _ = strconv.ParseInt(to, 10, 64)
+	if marketId == "" && symbol == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing marketId or symbol query param"})
 		return
 	}
 	lgc := logic.NewChartLogic(r.Context(), ctx)
-	data, err := lgc.GetMarketHistory(r.Context(), marketIDs, resolution, countback)
+	data, err := lgc.GetMarketHistoryDerivative(r.Context(), symbol, marketId, resolution, countback, fromInt, toInt)
 	if err != nil {
-		logx.Errorf("DerivativeMarketHistory error: %v", err)
+		logx.Errorf("GetMarketHistoryDerivative error: %v", err)
 		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
 		return
 	}
-	writeJSON(w, http.StatusOK, data)
+	writeJSON(w, http.StatusOK, model.DerivativeMarketHistoryResponse{
+		DerivativeMarketHistory: data,
+		S:                       "ok",
+	})
 }
 
 // DerivativeConfigHandler proxies Injective derivative config with caching via logic layer.
@@ -125,4 +142,32 @@ func DerivativeConfigHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *
 		return
 	}
 	writeJSON(w, http.StatusOK, cfg)
+}
+
+func DerivativeSymbolInfoHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *http.Request) {
+	lgc := logic.NewChartLogic(r.Context(), ctx)
+	group := r.URL.Query().Get("group")
+	symbolInfo, err := lgc.GetDerivativeSymbolInfo(r.Context(), group)
+	if err != nil {
+		logx.Errorf("DerivativeSymbolInfo error: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, symbolInfo)
+}
+
+func DerivativeSymbolsHandler(ctx *svc.ServiceContext, w http.ResponseWriter, r *http.Request) {
+	lgc := logic.NewChartLogic(r.Context(), ctx)
+	symbol := r.URL.Query().Get("symbol")
+	if symbol == "" {
+		writeJSON(w, http.StatusBadRequest, map[string]string{"error": "missing symbol query param"})
+		return
+	}
+	symbols, err := lgc.GetDerivativeSymbols(r.Context(), symbol)
+	if err != nil {
+		logx.Errorf("DerivativeSymbols error: %v", err)
+		writeJSON(w, http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return
+	}
+	writeJSON(w, http.StatusOK, symbols)
 }

@@ -33,8 +33,14 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		DB:       c.Redis.DB,
 	})
 
-	// Mongo
-	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(c.Mongo.URI))
+	// Mongo with tuned pool settings to avoid connection checkout timeouts
+	mongoOpts := options.Client().ApplyURI(c.Mongo.URI).
+		SetMaxPoolSize(2000).
+		SetMinPoolSize(10).
+		SetMaxConnIdleTime(5 * time.Minute).
+		SetServerSelectionTimeout(10 * time.Second).
+		SetConnectTimeout(10 * time.Second)
+	client, err := mongo.Connect(context.Background(), mongoOpts)
 	if err != nil {
 		logx.Errorf("failed to connect mongo: %v", err)
 		panic(err)
@@ -109,7 +115,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 	hc := &http.Client{Timeout: time.Duration(c.Injective.TimeoutMs) * time.Millisecond}
 
 	// Setup split log writer: api.log for API logs, cron.log for cron logs
-	if sw, err := logutil.NewSplitWriter("logs/api.log", "logs/cron.log"); err != nil {
+	if sw, err := logutil.NewSplitWriter("log/api.log", "log/cron.log"); err != nil {
 		logx.Errorf("init split log writer failed: %v", err)
 	} else {
 		logx.SetWriter(logx.NewWriter(sw))

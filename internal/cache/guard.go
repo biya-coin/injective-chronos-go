@@ -40,7 +40,10 @@ else
 end`)
 
 func releaseLock(ctx context.Context, rdb *redis.Client, lockKey, token string) {
-	if _, err := releaseLockScript.Run(ctx, rdb, []string{lockKey}, token).Result(); err != nil {
+	// 使用独立的短超时后台上下文，避免受请求上下文取消/超时影响
+	relCtx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	if _, err := releaseLockScript.Run(relCtx, rdb, []string{lockKey}, token).Result(); err != nil {
 		logx.Errorf("cache.releaseLock error: %v", err)
 	}
 }

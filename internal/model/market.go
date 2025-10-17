@@ -2,24 +2,6 @@ package model
 
 import "time"
 
-type MarketSummaryCommon struct {
-	MarketID string  `json:"marketId" bson:"marketId"`
-	Open     float64 `json:"open" bson:"open"`
-	High     float64 `json:"high" bson:"high"`
-	Low      float64 `json:"low" bson:"low"`
-	Volume   float64 `json:"volume" bson:"volume"`
-	Price    float64 `json:"price" bson:"price"`
-	Change   float64 `json:"change" bson:"change"`
-}
-
-type SpotMarketSummary struct {
-	MarketSummaryCommon `json:",inline" bson:",inline"`
-}
-
-type DerivativeMarketSummary struct {
-	MarketSummaryCommon `json:",inline" bson:",inline"`
-}
-
 type MarketHistoryRaw struct {
 	MarketID   string  `json:"marketID" bson:"marketID"`
 	Resolution string  `json:"resolution" bson:"resolution"`
