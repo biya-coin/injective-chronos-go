@@ -4,15 +4,65 @@ import (
 	"context"
 	"encoding/json"
 	"runtime/debug"
+	"time"
 
 	"github.com/zeromicro/go-zero/core/logx"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/biya-coin/injective-chronos-go/internal/consts"
 	"github.com/biya-coin/injective-chronos-go/internal/model"
 	"github.com/biya-coin/injective-chronos-go/internal/svc"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+// acquireTaskLock 尝试在 wait 时间内基于 Redis 获取分布式任务锁。
+// 成功返回释放函数与 true；失败返回 nil、false。
+func acquireTaskLock(ctx context.Context, svcCtx *svc.ServiceContext, key string, wait time.Duration) (func(), bool) {
+	if key == "" {
+		return nil, false
+	}
+	lockKey := "lock:task:" + key
+
+	// TTL 与重试间隔从配置读取，提供合理默认
+	lockTTL := time.Duration(svcCtx.Config.Redis.LockTTLSeconds) * time.Second
+	if lockTTL <= 0 {
+		lockTTL = 60 * time.Second
+	}
+	retryMs := svcCtx.Config.Redis.RetryMs
+	if retryMs <= 0 {
+		retryMs = 100
+	}
+	retryInterval := time.Duration(retryMs) * time.Millisecond
+
+	// 获取带超时的上下文
+	lockCtx, cancel := context.WithTimeout(ctx, wait)
+	defer cancel()
+
+	for {
+		select {
+		case <-lockCtx.Done():
+			logx.Infof("acquireTaskLock timeout for key=%s", key)
+			return nil, false
+		default:
+		}
+
+		ok, err := svcCtx.Redis.SetNX(lockCtx, lockKey, "1", lockTTL).Result()
+		if err != nil {
+			logx.Errorf("acquireTaskLock SetNX error for key=%s: %v", key, err)
+			return nil, false
+		}
+		if ok {
+			// 成功，提供释放函数
+			release := func() {
+				if _, err := svcCtx.Redis.Del(context.Background(), lockKey).Result(); err != nil {
+					logx.Errorf("releaseTaskLock DEL error for key=%s: %v", key, err)
+				}
+			}
+			return release, true
+		}
+		time.Sleep(retryInterval)
+	}
+}
 
 func parseMarketSummaryAllIds(v []model.MarketSummaryCommon) []string {
 	// logx.Infof("parse market summary all ids: %v", v)

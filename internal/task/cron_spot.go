@@ -17,6 +17,17 @@ import (
 )
 
 func fetchAndStoreSpotSummaryAll(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			logx.Errorf("goroutine recovered from fetchAndStoreSpotSummaryAll: %v", r)
+		}
+	}()
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_summary_all_fetch", 3*time.Second); !ok {
+		logx.Infof("fetchAndStoreSpotSummaryAll: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
 	for _, res := range consts.SupportedResolutions {
 		v, err := client.SpotMarketSummaryAll(ctxBg, res)
 		if err != nil {
@@ -37,6 +48,17 @@ func fetchAndStoreSpotSummaryAll(ctxBg context.Context, svcCtx *svc.ServiceConte
 
 // fetchAndStoreSpotSummaries fetches per-spot market summary concurrently (bounded) and stores to Mongo.
 func fetchAndStoreSpotSummaries(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			logx.Errorf("goroutine recovered from fetchAndStoreSpotSummaries: %v", r)
+		}
+	}()
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_summaries_fetch", 3*time.Second); !ok {
+		logx.Infof("fetchAndStoreSpotSummaries: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
 	for _, res := range consts.SupportedResolutions {
 		marketIds := getMarketSummaryAllIds(svcCtx, res, consts.MarketTypeSpot)
 		if marketIds == nil {
@@ -77,6 +99,17 @@ func fetchAndStoreSpotSummaries(ctxBg context.Context, svcCtx *svc.ServiceContex
 
 // fetchAndStoreSpotConfig fetches spot config from Injective and stores to Mongo.
 func fetchAndStoreSpotConfig(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			logx.Errorf("goroutine recovered from fetchAndStoreSpotConfig: %v", r)
+		}
+	}()
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_config_fetch", 3*time.Second); !ok {
+		logx.Infof("fetchAndStoreSpotConfig: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
 	cfg, err := client.SpotConfig(ctxBg)
 	if err != nil {
 		logx.Errorf("fetch spot config: %v", err)
@@ -94,6 +127,17 @@ func fetchAndStoreSpotConfig(ctxBg context.Context, svcCtx *svc.ServiceContext, 
 
 // fetchAndStoreSpotMarketHistory fetches spot-only market history and stores into Mongo `MarketColl`.
 func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			logx.Errorf("goroutine recovered from fetchAndStoreSpotMarketHistory: %v", r)
+		}
+	}()
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_market_history_fetch", 3*time.Second); !ok {
+		logx.Infof("fetchAndStoreSpotMarketHistory: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
 	var countback = 10
 	var from int64
 	var to int64 = time.Now().Unix()
@@ -168,6 +212,19 @@ func fetchAndStoreSpotMarketHistory(ctxBg context.Context, svcCtx *svc.ServiceCo
 }
 
 func fetchAndStoreSpotSymbolInfo(ctxBg context.Context, svcCtx *svc.ServiceContext, client *injective.Client) {
+	defer func() {
+		if r := recover(); r != nil {
+			logx.Errorf("goroutine recovered from fetchAndStoreSpotSymbolInfo: %v", r)
+		}
+	}()
+	// 分布式任务锁，避免并发重复执行（最多等待 3s 获取）
+	if release, ok := acquireTaskLock(ctxBg, svcCtx, "spot_symbol_info_fetch", 3*time.Second); !ok {
+		logx.Infof("fetchAndStoreSpotSymbolInfo: acquire lock timeout, skip this run")
+		return
+	} else {
+		defer release()
+	}
+
 	// TOOD:to confirm the group come form
 	logx.Infof("fetchAndStoreSpotSymbolInfo starting------->")
 	var group string = ""
